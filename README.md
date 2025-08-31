@@ -1,6 +1,8 @@
 # UltraKiosk
 
-This is a very simple iOS application designed to run HomeAssistant in a fullscreen kiosk mode. It also includes functionality to use your iOS device as a voice satellite, so it is best suited to run an iPad as an intelligent wall-mounted display.
+[![Build](https://github.com/mirkosertic/UltraKiosk/actions/workflows/build.yaml/badge.svg)](https://github.com/mirkosertic/UltraKiosk/actions/workflows/build.yaml)
+
+This is a very simple iOS application designed to run HomeAssistant in fullscreen kiosk mode. It also includes functionality to use your iOS device as a voice satellite, so it is best suited to run an iPad as an intelligent wall-mounted display.
 
 Core-Features are:
 * Run HomeAssistant dashboards in fullscreen Kiosk mode (works best with HACS Kioskmode)
