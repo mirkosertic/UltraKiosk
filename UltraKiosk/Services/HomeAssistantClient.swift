@@ -4,19 +4,52 @@ import Combine
 
 class HomeAssistantClient: ObservableObject {
     @Published var isConnected = false
+    @Published var connectionStatus = "Disconnected"
     
-    private let baseURL = "ws://homeassistant.local:8123" // Replace with your Home Assistant URL
-    private let accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIwYTJmOTU1ZDYwNjY0YmI1YTc2NGU4ZDAyNTMwZTA1ZSIsImlhdCI6MTcxOTE0MTcxNiwiZXhwIjoyMDM0NTAxNzE2fQ.u2rLYy7Mc4VIQ9-x_25Ra2IRejvkXBsRX8lxvjBzPIM" // Replace with your token
+    private let settings = SettingsManager.shared
     
     private var webSocketTask: URLSessionWebSocketTask?
     private var session: URLSession?
+    private var currentBinaryData: Int = -1
+    private var processId: Int = 0
+    private var conversationId : String = ""
     
     init() {
         setupWebSocket()
+        
+        // Listen for settings changes
+        NotificationCenter.default.addObserver(
+            forName: .settingsChanged,
+            object: nil,
+            queue: .main
+        ) { _ in
+            self.reconnectIfNeeded()
+        }
+    }
+    
+    private var baseURL: String {
+        return settings.homeAssistantWebSocketURL
+    }
+    
+    private var accessToken: String {
+        return settings.accessToken
+    }
+    
+    private func reconnectIfNeeded() {
+        // Reconnect if settings changed and we have valid configuration
+        if !settings.accessToken.isEmpty && !settings.homeAssistantIP.isEmpty {
+            webSocketTask?.cancel()
+            setupWebSocket()
+        }
     }
     
     private func setupWebSocket() {
-        guard let url = URL(string: "\(baseURL)/api/websocket") else { return }
+        guard !settings.accessToken.isEmpty,
+              !settings.homeAssistantIP.isEmpty,
+              let url = URL(string: "\(baseURL)/api/websocket") else { 
+            updateConnectionStatus("Konfiguration unvollständig")
+            return 
+        }
         
         session = URLSession(configuration: .default)
         webSocketTask = session?.webSocketTask(with: url)
@@ -24,13 +57,27 @@ class HomeAssistantClient: ObservableObject {
         connectWebSocket()
     }
     
+    private func updateConnectionStatus(_ status: String) {
+        DispatchQueue.main.async {
+            self.connectionStatus = status
+            self.isConnected = (status == "Connected")
+        }
+    }
+    
     private func connectWebSocket() {
+        updateConnectionStatus("Connecting...")
         webSocketTask?.resume()
         
         // Listen for messages
         receiveMessage()
         
-        // Send authentication
+        // Send authentication after connection
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.authenticateWithHomeAssistant()
+        }
+    }
+    
+    private func authenticateWithHomeAssistant() {
         let authMessage = [
             "type": "auth",
             "access_token": accessToken
@@ -67,8 +114,11 @@ class HomeAssistantClient: ObservableObject {
                 
             case .failure(let error):
                 print("WebSocket receive error: \(error)")
-                DispatchQueue.main.async {
-                    self?.isConnected = false
+                self?.updateConnectionStatus("Connection Lost")
+                
+                // Attempt reconnection
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    self?.connectWebSocket()
                 }
             }
         }
@@ -76,8 +126,10 @@ class HomeAssistantClient: ObservableObject {
     
     private func startNewPipeline() {
         // We are authenticated, so we start a new pipeline
+        processId += 1
+        
         let startPipelineMessage : [String: Any] = [
-            "id": 10,
+            "id": processId,
             "type": "assist_pipeline/run",
             "start_stage": "wake_word",
             "end_stage": "tts",
@@ -87,6 +139,8 @@ class HomeAssistantClient: ObservableObject {
                 "timeout": 3
             ]
         ]
+        
+        currentBinaryData = -1
         
         print("Starting new voice pipeline")
         sendMessage(startPipelineMessage)
@@ -101,15 +155,111 @@ class HomeAssistantClient: ObservableObject {
                 let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
                 print("Got JSON data!")
                 
+                let id = json?["id"] as? Int ?? -1
+                if (id != processId) {
+                    print("Got event with id \(id), expected \(processId), ignoring.")
+                    return
+                }
+                
                 if json?["type"] as? String == "auth_ok" {
                     print("Authentication successful!")
                     
-                    // Starting new pipeline
-                    DispatchQueue.main.async {
-                        self.isConnected = true
-                    }
+                    updateConnectionStatus("Connected")
                     
                     startNewPipeline()
+                }
+                
+                if json?["type"] as? String == "auth_invalid" {
+                    print("Authentication failed!")
+                    
+                    updateConnectionStatus("Auth Failed")
+                }
+                
+                if json?["type"] as? String == "event" {
+                    let eventData = json?["event"] as? [String: Any]
+                    if eventData?["type"] as? String == "run-start" {
+                        print("Pipeline started!")
+                        let data = eventData?["data"] as? [String: Any]
+                        conversationId = data?["conversation_id"] as? String ?? ""
+                        print("Conversation ID: \(conversationId)")
+                        let runnertData = data?["runner_data"] as? [String: Any]
+                        currentBinaryData = runnertData?["stt_binary_handler_id"] as? Int ?? -1
+                        print("Current binary data handler: \(currentBinaryData)")
+                    }
+                    if eventData?["type"] as? String == "wake_word-start" {
+                        print("Wakeword detection started!")
+                        let data = eventData?["data"] as? [String: Any]
+                        let meta = (data?["metadata"] as? [String: Any])
+                        let format = meta?["format"] as? String
+                        let codec = meta?["codec"] as? String
+                        let bitrate = meta?["bit_rate"] as? Int ?? -1
+                        let samplerate = meta?["sample_rate"] as? Int ?? -1
+                        let channels = meta?["channel"] as? Int ?? 1
+                        print("Expected format and codec is \(format ?? "unknown"), \(codec ?? "unknown"), \(bitrate), \(samplerate)")
+                        
+                        if (bitrate != -1 && samplerate != -1) {
+                            print("Reinitializing audio session with sample rate \(samplerate) and bitrate \(bitrate)")
+                            NotificationCenter.default.post(
+                                name: .homeAssistantFormatChanged,
+                                object: nil,
+                                userInfo: [
+                                    "sample_rate": samplerate,
+                                    "channels": channels
+                                ]
+                            )
+                        }
+                    }
+                    if eventData?["type"] as? String == "stt-start" {
+                        print("STT started!")
+                        let data = eventData?["data"] as? [String: Any]
+                        let meta = (data?["metadata"] as? [String: Any])
+                        let format = meta?["format"] as? String
+                        let codec = meta?["codec"] as? String
+                        let bitrate = meta?["bit_rate"] as? Int ?? -1
+                        let samplerate = meta?["sample_rate"] as? Int ?? -1
+                        let channels = meta?["channel"] as? Int ?? 1
+                        print("Expected format and codec is \(format ?? "unknown"), \(codec ?? "unknown"), \(bitrate), \(samplerate)")
+                        
+                        if (bitrate != -1 && samplerate != -1) {
+                            print("Reinitializing audio session with sample rate \(samplerate) and bitrate \(bitrate)")
+                            NotificationCenter.default.post(
+                                name: .homeAssistantFormatChanged,
+                                object: nil,
+                                userInfo: [
+                                    "sample_rate": samplerate,
+                                    "channels": channels
+                                ]
+                            )
+                        }
+                    }
+                    if eventData?["type"] as? String == "tts-end" {
+                        print("TTS ended!")
+                        let data = eventData?["data"] as? [String: Any]
+
+                        let ttsoutput = (data?["tts_output"] as? [String: Any])
+                        let url = ttsoutput?["url"] as? String ?? "unknown"
+                        print("URL to play is : \(url)")
+                        
+                        NotificationCenter.default.post(
+                            name: .homeAssistantPipelineFeedback,
+                            object: nil,
+                            userInfo: [
+                                "url": SettingsManager.shared.homeAssistantBaseURL + url
+                            ]
+                        )
+                    }
+                    if eventData?["type"] as? String == "error" {
+                        print("Got error")
+                        let data = eventData?["data"] as? [String: Any]
+                        let code = data?["code"] as? String
+                        let message = data?["message"] as? String
+                        print("Error code: \(code ?? "unknown"), Error message: \(message ?? "unknown")")
+                    }
+                    if eventData?["type"] as? String == "run-end" {
+                        print("Pipeline ended")
+                        startNewPipeline()
+                    }
+                    
                 }
             } catch {
                 print(error.localizedDescription)
@@ -130,9 +280,14 @@ class HomeAssistantClient: ObservableObject {
     }
     
     func sendAudioData(_ audioData: Data) {
-        // Send audio data to Home Assistant Voice Pipeline
-        let message = URLSessionWebSocketTask.Message.data(audioData)
-        webSocketTask?.send(message) { error in
+        // Prefix currentBinaryData as a single byte, then append audio data
+        guard currentBinaryData >= 0 else { return }
+        var payload = Data()
+        payload.reserveCapacity(1 + audioData.count)
+        payload.append(UInt8(truncatingIfNeeded: currentBinaryData))
+        payload.append(audioData)
+        
+        webSocketTask?.send(.data(payload)) { error in
             if let error = error {
                 print("Failed to send audio data: \(error)")
             }
@@ -142,4 +297,6 @@ class HomeAssistantClient: ObservableObject {
 
 extension Notification.Name {
     static let homeAssistantAudioReceived = Notification.Name("HomeAssistantAudioReceived")
+    static let homeAssistantFormatChanged = Notification.Name("HomeAssistantFormatChanged")
+    static let homeAssistantPipelineFeedback = Notification.Name("HomeAssistantPipelineFeedback")
 }

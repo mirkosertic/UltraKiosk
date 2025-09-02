@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		80A5915D2E66C9DC004BBBE0 /* CocoaMQTT in Frameworks */ = {isa = PBXBuildFile; productRef = 80A5915C2E66C9DC004BBBE0 /* CocoaMQTT */; };
+		80A5915F2E66C9DC004BBBE0 /* CocoaMQTTWebSocket in Frameworks */ = {isa = PBXBuildFile; productRef = 80A5915E2E66C9DC004BBBE0 /* CocoaMQTTWebSocket */; };
+		80A591682E66D511004BBBE0 /* Starscream in Frameworks */ = {isa = PBXBuildFile; productRef = 80A591672E66D511004BBBE0 /* Starscream */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		802DF9AF2E6391500079EC75 /* UltraKiosk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UltraKiosk.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +42,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80A5915F2E66C9DC004BBBE0 /* CocoaMQTTWebSocket in Frameworks */,
+				80A5915D2E66C9DC004BBBE0 /* CocoaMQTT in Frameworks */,
+				80A591682E66D511004BBBE0 /* Starscream in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +87,9 @@
 			);
 			name = UltraKiosk;
 			packageProductDependencies = (
+				80A5915C2E66C9DC004BBBE0 /* CocoaMQTT */,
+				80A5915E2E66C9DC004BBBE0 /* CocoaMQTTWebSocket */,
+				80A591672E66D511004BBBE0 /* Starscream */,
 			);
 			productName = UltraKiosk;
 			productReference = 802DF9AF2E6391500079EC75 /* UltraKiosk.app */;
@@ -108,6 +120,8 @@
 			mainGroup = 802DF9A62E6391500079EC75;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				80A5915B2E66C9DC004BBBE0 /* XCRemoteSwiftPackageReference "CocoaMQTT" */,
+				80A591662E66D511004BBBE0 /* XCRemoteSwiftPackageReference "Starscream" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 802DF9B02E6391500079EC75 /* Products */;
@@ -343,6 +357,43 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		80A5915B2E66C9DC004BBBE0 /* XCRemoteSwiftPackageReference "CocoaMQTT" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/emqx/CocoaMQTT.git";
+			requirement = {
+				kind = exactVersion;
+				version = 2.1.7;
+			};
+		};
+		80A591662E66D511004BBBE0 /* XCRemoteSwiftPackageReference "Starscream" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/daltoniam/Starscream.git";
+			requirement = {
+				kind = exactVersion;
+				version = 4.0.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		80A5915C2E66C9DC004BBBE0 /* CocoaMQTT */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 80A5915B2E66C9DC004BBBE0 /* XCRemoteSwiftPackageReference "CocoaMQTT" */;
+			productName = CocoaMQTT;
+		};
+		80A5915E2E66C9DC004BBBE0 /* CocoaMQTTWebSocket */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 80A5915B2E66C9DC004BBBE0 /* XCRemoteSwiftPackageReference "CocoaMQTT" */;
+			productName = CocoaMQTTWebSocket;
+		};
+		80A591672E66D511004BBBE0 /* Starscream */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 80A591662E66D511004BBBE0 /* XCRemoteSwiftPackageReference "Starscream" */;
+			productName = Starscream;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 802DF9A72E6391500079EC75 /* Project object */;
 }
