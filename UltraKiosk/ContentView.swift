@@ -112,7 +112,7 @@ struct ContentView: View {
     }
     
     private func handleSettingsChanged() {
-        print("Settings changed - updating components")
+        AppLogger.app.info("Settings changed – updating components")
         
         // Update audio recording based on voice activation setting
         if settings.enableVoiceActivation && !audioManager.isRecording {

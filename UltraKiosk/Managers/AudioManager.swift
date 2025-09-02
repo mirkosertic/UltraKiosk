@@ -62,7 +62,7 @@ class AudioManager: NSObject, ObservableObject {
             
             try audioSession.setActive(true)
         } catch {
-            print("Audio session setup failed: \(error)")
+            AppLogger.audio.error("Audio session setup failed: \(String(describing: error))")
         }
     }
     
@@ -100,7 +100,7 @@ class AudioManager: NSObject, ObservableObject {
                 self.isRecording = true
             }
         } catch {
-            print("Failed to start audio engine: \(error)")
+            AppLogger.audio.error("Failed to start audio engine: \(String(describing: error))")
         }
     }
     
@@ -157,7 +157,7 @@ class AudioManager: NSObject, ObservableObject {
             try session.setActive(true)
             try session.overrideOutputAudioPort(.speaker)
         } catch {
-            print("Audio session activation/override failed: \(error)")
+            AppLogger.audio.error("Audio session activation/override failed: \(String(describing: error))")
         }
         
         let item = AVPlayerItem(url: url)

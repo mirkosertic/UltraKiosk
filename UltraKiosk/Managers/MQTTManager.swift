@@ -120,9 +120,9 @@ class MQTTManager: ObservableObject {
         
         updateConnectionStatus("Konfiguriert")
         
-        print("MQTT: Device ID: \(deviceSerializedId)")
-        print("MQTT: Device Name: \(deviceName)")
-        print("MQTT: Vendor ID: \(deviceIdentifier)")
+        AppLogger.mqtt.info("Device ID: \(deviceSerializedId)")
+        AppLogger.mqtt.info("Device Name: \(deviceName)")
+        AppLogger.mqtt.info("Vendor ID: \(deviceIdentifier)")
     }
     
     private func reconnectIfNeeded() {
@@ -160,7 +160,7 @@ class MQTTManager: ObservableObject {
             self.connectionStatus = status
             self.isConnected = (status == "Verbunden")
             
-            print("MQTT Status: \(status)")
+            AppLogger.mqtt.info("Status: \(status)")
         }
     }
     
@@ -304,7 +304,7 @@ class MQTTManager: ObservableObject {
         let attributesTopic = "\(settings.mqttTopicPrefix)/sensor/\(deviceSerializedId)/battery/attributes"
         publishJSON(topic: attributesTopic, payload: attributes)
         
-        print("MQTT: Published battery level: \(batteryPercentage)% (\(batteryStateString))")
+        AppLogger.mqtt.debug("Published battery level: \(batteryPercentage)% (\(batteryStateString))")
     }
     
     private func publishAppInfo() {
@@ -343,14 +343,14 @@ class MQTTManager: ObservableObject {
         let screensaverTopic = "\(settings.mqttTopicPrefix)/button/\(deviceSerializedId)/screensaver/set"
         client.subscribe(screensaverTopic, qos: .qos1)
         
-        print("MQTT: Subscribed to \(screensaverTopic)")
+        AppLogger.mqtt.info("Subscribed to \(screensaverTopic)")
     }
     
     private func handleIncomingMessage(_ message: CocoaMQTTMessage) {
         let topic = message.topic
         let payload = message.string ?? ""
         
-        print("MQTT: Received message on \(topic): \(payload)")
+        AppLogger.mqtt.debug("Received message on \(topic): \(payload)")
         
         // Handle screensaver button
         if topic.contains("/screensaver/set") {
@@ -367,7 +367,7 @@ class MQTTManager: ObservableObject {
         let message = CocoaMQTTMessage(topic: topic, string: payload, qos: qos, retained: retain)
         client.publish(message)
         
-        print("MQTT: Published to \(topic): \(payload)")
+        AppLogger.mqtt.debug("Published to \(topic): \(payload)")
     }
     
     private func publishJSON(topic: String, payload: [String: Any], qos: CocoaMQTTQoS = .qos0, retain: Bool = false) {
@@ -376,7 +376,7 @@ class MQTTManager: ObservableObject {
             let jsonString = String(data: jsonData, encoding: .utf8) ?? ""
             publish(topic: topic, payload: jsonString, qos: qos, retain: retain)
         } catch {
-            print("MQTT: Failed to serialize JSON for \(topic): \(error)")
+            AppLogger.mqtt.error("Failed to serialize JSON for \(topic): \(String(describing: error))")
         }
     }
     
@@ -462,18 +462,18 @@ extension MQTTManager: CocoaMQTTDelegate {
     }
     
     func mqtt(_ mqtt: CocoaMQTT, didPublishAck id: UInt16) {
-        print("MQTT: Published message with ID \(id)")
+        AppLogger.mqtt.debug("Published message ack id=\(id)")
     }
     
     func mqtt(_ mqtt: CocoaMQTT, didSubscribeTopics success: NSDictionary, failed: [String]) {
-        print("MQTT: Subscribed successfully: \(success)")
+        AppLogger.mqtt.info("Subscribed successfully: \(success)")
         if !failed.isEmpty {
-            print("MQTT: Failed subscriptions: \(failed)")
+            AppLogger.mqtt.error("Failed subscriptions: \(failed)")
         }
     }
     
     func mqtt(_ mqtt: CocoaMQTT, didUnsubscribeTopics topics: [String]) {
-        print("MQTT: Unsubscribed topics: \(topics)")
+        AppLogger.mqtt.info("Unsubscribed topics: \(topics)")
     }
     
     func mqttDidPing(_ mqtt: CocoaMQTT) {

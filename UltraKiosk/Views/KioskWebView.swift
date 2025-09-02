@@ -220,7 +220,7 @@ struct KioskWebView: UIViewRepresentable {
         func executeJavaScript(_ script: String) {
             webView?.evaluateJavaScript(script) { result, error in
                 if let error = error {
-                    print("JavaScript execution error: \(error)")
+                    AppLogger.webView.error("JavaScript execution failed: \(String(describing: error))")
                 }
             }
         }
@@ -250,7 +250,7 @@ struct KioskWebView: UIViewRepresentable {
                 handleOpenSettings(action: action, data: body)
                 
             default:
-                print("Unknown message: \(message.name)")
+                AppLogger.webView.warning("Unhandled JavaScript message: \(message.name)")
             }
         }
         

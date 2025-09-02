@@ -93,7 +93,7 @@ class HomeAssistantClient: ObservableObject {
         let message = URLSessionWebSocketTask.Message.string(string)
         webSocketTask?.send(message) { error in
             if let error = error {
-                print("WebSocket send error: \(error)")
+                AppLogger.homeAssistant.error("WebSocket send failed: \(String(describing: error))")
             }
         }
     }
@@ -113,7 +113,7 @@ class HomeAssistantClient: ObservableObject {
                 self?.receiveMessage()
                 
             case .failure(let error):
-                print("WebSocket receive error: \(error)")
+                AppLogger.homeAssistant.error("WebSocket receive failed: \(String(describing: error))")
                 self?.updateConnectionStatus("Connection Lost")
                 
                 // Attempt reconnection
@@ -142,27 +142,27 @@ class HomeAssistantClient: ObservableObject {
         
         currentBinaryData = -1
         
-        print("Starting new voice pipeline")
+        AppLogger.homeAssistant.info("Starting new voice pipeline")
         sendMessage(startPipelineMessage)
     }
     
     private func handleMessage(_ message: String) {
         // Handle text messages from Home Assistant
-        print("Received message: \(message)")
+        AppLogger.homeAssistant.debug("Received message: \(message)")
         
         if let data = message.data(using: .utf8) {
             do {
                 let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
-                print("Got JSON data!")
+                AppLogger.homeAssistant.debug("Parsed JSON message")
                 
                 let id = json?["id"] as? Int ?? -1
                 if (id != processId) {
-                    print("Got event with id \(id), expected \(processId), ignoring.")
+                    AppLogger.homeAssistant.notice("Ignoring event with id \(id); expected \(processId)")
                     return
                 }
                 
                 if json?["type"] as? String == "auth_ok" {
-                    print("Authentication successful!")
+                    AppLogger.homeAssistant.info("Authentication succeeded")
                     
                     updateConnectionStatus("Connected")
                     
@@ -170,7 +170,7 @@ class HomeAssistantClient: ObservableObject {
                 }
                 
                 if json?["type"] as? String == "auth_invalid" {
-                    print("Authentication failed!")
+                    AppLogger.homeAssistant.error("Authentication failed")
                     
                     updateConnectionStatus("Auth Failed")
                 }
@@ -178,16 +178,16 @@ class HomeAssistantClient: ObservableObject {
                 if json?["type"] as? String == "event" {
                     let eventData = json?["event"] as? [String: Any]
                     if eventData?["type"] as? String == "run-start" {
-                        print("Pipeline started!")
+                        AppLogger.homeAssistant.info("Pipeline started")
                         let data = eventData?["data"] as? [String: Any]
                         conversationId = data?["conversation_id"] as? String ?? ""
-                        print("Conversation ID: \(conversationId)")
+                        AppLogger.homeAssistant.debug("Conversation ID: \(conversationId)")
                         let runnertData = data?["runner_data"] as? [String: Any]
                         currentBinaryData = runnertData?["stt_binary_handler_id"] as? Int ?? -1
-                        print("Current binary data handler: \(currentBinaryData)")
+                        AppLogger.homeAssistant.debug("Current binary data handler id: \(currentBinaryData)")
                     }
                     if eventData?["type"] as? String == "wake_word-start" {
-                        print("Wakeword detection started!")
+                        AppLogger.homeAssistant.info("Wake word detection started")
                         let data = eventData?["data"] as? [String: Any]
                         let meta = (data?["metadata"] as? [String: Any])
                         let format = meta?["format"] as? String
@@ -195,10 +195,10 @@ class HomeAssistantClient: ObservableObject {
                         let bitrate = meta?["bit_rate"] as? Int ?? -1
                         let samplerate = meta?["sample_rate"] as? Int ?? -1
                         let channels = meta?["channel"] as? Int ?? 1
-                        print("Expected format and codec is \(format ?? "unknown"), \(codec ?? "unknown"), \(bitrate), \(samplerate)")
+                        AppLogger.homeAssistant.debug("Expected audio format: format=\(format ?? "unknown"), codec=\(codec ?? "unknown"), bitRate=\(bitrate), sampleRate=\(samplerate)")
                         
                         if (bitrate != -1 && samplerate != -1) {
-                            print("Reinitializing audio session with sample rate \(samplerate) and bitrate \(bitrate)")
+                            AppLogger.audio.info("Reinitializing audio session sampleRate=\(samplerate), bitRate=\(bitrate)")
                             NotificationCenter.default.post(
                                 name: .homeAssistantFormatChanged,
                                 object: nil,
@@ -210,7 +210,7 @@ class HomeAssistantClient: ObservableObject {
                         }
                     }
                     if eventData?["type"] as? String == "stt-start" {
-                        print("STT started!")
+                        AppLogger.homeAssistant.info("Speech-to-text started")
                         let data = eventData?["data"] as? [String: Any]
                         let meta = (data?["metadata"] as? [String: Any])
                         let format = meta?["format"] as? String
@@ -218,10 +218,10 @@ class HomeAssistantClient: ObservableObject {
                         let bitrate = meta?["bit_rate"] as? Int ?? -1
                         let samplerate = meta?["sample_rate"] as? Int ?? -1
                         let channels = meta?["channel"] as? Int ?? 1
-                        print("Expected format and codec is \(format ?? "unknown"), \(codec ?? "unknown"), \(bitrate), \(samplerate)")
+                        AppLogger.homeAssistant.debug("Expected audio format: format=\(format ?? "unknown"), codec=\(codec ?? "unknown"), bitRate=\(bitrate), sampleRate=\(samplerate)")
                         
                         if (bitrate != -1 && samplerate != -1) {
-                            print("Reinitializing audio session with sample rate \(samplerate) and bitrate \(bitrate)")
+                            AppLogger.audio.info("Reinitializing audio session sampleRate=\(samplerate), bitRate=\(bitrate)")
                             NotificationCenter.default.post(
                                 name: .homeAssistantFormatChanged,
                                 object: nil,
@@ -233,12 +233,12 @@ class HomeAssistantClient: ObservableObject {
                         }
                     }
                     if eventData?["type"] as? String == "tts-end" {
-                        print("TTS ended!")
+                        AppLogger.homeAssistant.info("Text-to-speech finished")
                         let data = eventData?["data"] as? [String: Any]
 
                         let ttsoutput = (data?["tts_output"] as? [String: Any])
                         let url = ttsoutput?["url"] as? String ?? "unknown"
-                        print("URL to play is : \(url)")
+                        AppLogger.homeAssistant.info("TTS media URL: \(url)")
                         
                         NotificationCenter.default.post(
                             name: .homeAssistantPipelineFeedback,
@@ -249,20 +249,20 @@ class HomeAssistantClient: ObservableObject {
                         )
                     }
                     if eventData?["type"] as? String == "error" {
-                        print("Got error")
+                        AppLogger.homeAssistant.error("Pipeline error event received")
                         let data = eventData?["data"] as? [String: Any]
                         let code = data?["code"] as? String
                         let message = data?["message"] as? String
-                        print("Error code: \(code ?? "unknown"), Error message: \(message ?? "unknown")")
+                        AppLogger.homeAssistant.error("Error code=\(code ?? "unknown"), message=\(message ?? "unknown")")
                     }
                     if eventData?["type"] as? String == "run-end" {
-                        print("Pipeline ended")
+                        AppLogger.homeAssistant.info("Pipeline ended")
                         startNewPipeline()
                     }
                     
                 }
             } catch {
-                print(error.localizedDescription)
+                AppLogger.homeAssistant.error("Failed to parse message: \(error.localizedDescription)")
             }
         }
         
@@ -289,7 +289,7 @@ class HomeAssistantClient: ObservableObject {
         
         webSocketTask?.send(.data(payload)) { error in
             if let error = error {
-                print("Failed to send audio data: \(error)")
+                AppLogger.homeAssistant.error("Failed to send audio data: \(String(describing: error))")
             }
         }
     }
