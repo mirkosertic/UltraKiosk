@@ -4,17 +4,6 @@
 
 UltraKiosk is a lightweight iOS app that displays Home Assistant in full‑screen kiosk mode. It can also act as a voice satellite. A common use case is a wall‑mounted iPad as a smart display.
 
-## Contents
-- **Features**
-- **Screenshots**
-- **Installation**
-- **Quick Start**
-- **Configuration**
-- **Privacy & Permissions**
-- **Contributing**
-- **License**
-- **Roadmap**
-
 ## Features
 - Full‑screen display of Home Assistant dashboards (works best with HACS "Kioskmode")
 - Screensaver after inactivity
