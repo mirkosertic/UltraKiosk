@@ -24,7 +24,7 @@ struct ScreensaverView: View {
                     HStack {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        Text("Gesichtserkennung aktiv...")
+                        Text("Face detection active...")
                             .foregroundColor(.gray)
                     }
                     .padding(.top, 40)

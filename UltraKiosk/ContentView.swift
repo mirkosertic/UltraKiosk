@@ -14,15 +14,21 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
+            // Keep WebView alive and just control visibility
+            KioskWebView()
+                .environmentObject(kioskManager)
+                .environmentObject(settings)
+                .opacity(kioskManager.isScreensaverActive ? 0 : 1)
+                .animation(.easeInOut(duration: 0.5), value: kioskManager.isScreensaverActive)
+                .allowsHitTesting(!kioskManager.isScreensaverActive)
+            
+            // Screensaver overlay
             if kioskManager.isScreensaverActive {
                 ScreensaverView()
                     .environmentObject(kioskManager)
                     .environmentObject(faceDetectionManager)
                     .environmentObject(settings)
-            } else {
-                KioskWebView()
-                    .environmentObject(kioskManager)
-                    .environmentObject(settings)
+                    .transition(.opacity)
             }
             
             // Settings Access (Hidden gesture area)

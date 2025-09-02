@@ -195,24 +195,24 @@ class SettingsManager: ObservableObject {
         
         // Validate port
         if Int(homeAssistantPort) == nil || Int(homeAssistantPort)! < 1 || Int(homeAssistantPort)! > 65535 {
-            issues.append("Ungültiger Port für Home Assistant")
+            issues.append("Invalid port for Home Assistant")
         }
         
         // Validate access token
         if accessToken.isEmpty {
-            issues.append("Access Token ist erforderlich")
+            issues.append("Access Token is required")
         }
         
         // Validate MQTT settings if enabled
         if enableMQTT {
             if Int(mqttPort) == nil || Int(mqttPort)! < 1 || Int(mqttPort)! > 65535 {
-                issues.append("Ungültiger MQTT Port")
+                issues.append("Invalid MQTT port")
             }
         }
         
         // Validate timeout
         if screensaverTimeout < 10 {
-            issues.append("Screensaver-Timeout sollte mindestens 10 Sekunden betragen")
+            issues.append("Screensaver timeout should be at least 10 seconds")
         }
         
         return issues

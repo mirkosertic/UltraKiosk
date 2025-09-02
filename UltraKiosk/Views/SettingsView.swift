@@ -21,41 +21,41 @@ struct SettingsView: View {
                 kioskSection
                 actionsSection
             }
-            .navigationTitle("Einstellungen")
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Abbrechen") {
+                    Button("Cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Fertig") {
+                    Button("Done") {
                         saveAndClose()
                     }
                     //.fontWeight(.semibold)
                 }
             }
-            .alert("Validierungsfehler", isPresented: $showingValidationAlert) {
+            .alert("Validation error", isPresented: $showingValidationAlert) {
                 Button("OK") { }
             } message: {
                 Text(validationIssues.joined(separator: "\n"))
             }
-            .alert("Einstellungen zurücksetzen", isPresented: $showingResetAlert) {
-                Button("Abbrechen", role: .cancel) { }
-                Button("Zurücksetzen", role: .destructive) {
+            .alert("Reset settings", isPresented: $showingResetAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Reset", role: .destructive) {
                     settings.resetToDefaults()
                 }
             } message: {
-                Text("Möchten Sie alle Einstellungen auf die Standardwerte zurücksetzen?")
+                Text("Do you want to reset all settings to the default values?")
             }
         }
     }
     
     private var mqttSection: some View {
         Section("MQTT Integration") {
-            Toggle("MQTT aktivieren", isOn: $settings.enableMQTT)
+            Toggle("Enable MQTT", isOn: $settings.enableMQTT)
             
             if settings.enableMQTT {
                 HStack {
@@ -75,17 +75,17 @@ struct SettingsView: View {
                         .frame(maxWidth: 100)
                 }
                 
-                Toggle("TLS/SSL verwenden", isOn: $settings.mqttUseTLS)
+                Toggle("Use TLS/SSL", isOn: $settings.mqttUseTLS)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Benutzername (optional)")
+                    Text("Username (optional)")
                     TextField("MQTT Username", text: $settings.mqttUsername)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .autocapitalization(.none)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Passwort (optional)")
+                    Text("Password (optional)")
                     SecureField("MQTT Password", text: $settings.mqttPassword)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                 }
@@ -98,7 +98,7 @@ struct SettingsView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Device Info (automatisch generiert)")
+                    Text("Device Info (automatically generated)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
@@ -138,7 +138,7 @@ struct SettingsView: View {
                         } else {
                             Image(systemName: "antenna.radiowaves.left.and.right")
                         }
-                        Text("MQTT Verbindung testen")
+                        Text("Test MQTT connection")
                     }
                 }
                 .disabled(isTestingConnection)
@@ -171,13 +171,13 @@ struct SettingsView: View {
                     .frame(maxWidth: 100)
             }
             
-            Toggle("HTTPS verwenden", isOn: $settings.useHTTPS)
+            Toggle("Use HTTPS", isOn: $settings.useHTTPS)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text("Access Token")
                 SecureField("Long-lived Access Token", text: $settings.accessToken)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
-                Text("Erstellen Sie einen Long-lived Access Token in Home Assistant unter Profile → Security")
+                Text("Create a Long-lived Access Token in Home Assistant under Profile → Security")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -190,7 +190,7 @@ struct SettingsView: View {
                     } else {
                         Image(systemName: "network")
                     }
-                    Text("Verbindung testen")
+                    Text("Test connection")
                 }
             }
             .disabled(isTestingConnection)
@@ -198,7 +198,7 @@ struct SettingsView: View {
             if !testConnectionResult.isEmpty {
                 Text(testConnectionResult)
                     .font(.caption)
-                    .foregroundColor(testConnectionResult.contains("Erfolgreich") ? .green : .red)
+                    .foregroundColor(testConnectionResult.contains("Success") ? .green : .red)
             }
         }
     }
@@ -206,7 +206,7 @@ struct SettingsView: View {
     private var screensaverSection: some View {
         Section("Screensaver") {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Inaktivitäts-Timeout: \(settings.screensaverTimeoutFormatted)")
+                Text("Inactivity timeout: \(settings.screensaverTimeoutFormatted)")
                 Slider(value: $settings.screensaverTimeout, in: 10...1800, step: 10) {
                     Text("Timeout")
                 } minimumValueLabel: {
@@ -217,32 +217,32 @@ struct SettingsView: View {
             }
             
             VStack(alignment: .leading, spacing: 8) {
-                Text("Bildschirmhelligkeit (gedimmt): \(Int(settings.screenBrightnessDimmed * 100))%")
+                Text("Screen brightness (dimmed): \(Int(settings.screenBrightnessDimmed * 100))%")
                 Slider(value: $settings.screenBrightnessDimmed, in: 0.05...0.8, step: 0.05)
             }
             
             VStack(alignment: .leading, spacing: 8) {
-                Text("Bildschirmhelligkeit (normal): \(Int(settings.screenBrightnessNormal * 100))%")
+                Text("Screen brightness (normal): \(Int(settings.screenBrightnessNormal * 100))%")
                 Slider(value: $settings.screenBrightnessNormal, in: 0.3...1.0, step: 0.05)
             }
         }
     }
     
     private var voiceSection: some View {
-        Section("Sprachsteuerung") {
-            Toggle("Voice Activation aktivieren", isOn: $settings.enableVoiceActivation)
+        Section("Voice control") {
+            Toggle("Enable voice activation", isOn: $settings.enableVoiceActivation)
         }
     }
     
     private var kioskSection: some View {
-        Section("Kiosk-Modus") {
+        Section("Kiosk mode") {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Kiosk-URL (optional)")
+                Text("Kiosk URL (optional)")
                 TextField("https://your-dashboard.com", text: $settings.kioskURL)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .keyboardType(.URL)
                     .autocapitalization(.none)
-                Text("Leer lassen für Demo-Seite")
+                Text("Leave empty for demo page")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -250,13 +250,13 @@ struct SettingsView: View {
     }
     
     private var actionsSection: some View {
-        Section("Aktionen") {
-            Button("Einstellungen zurücksetzen") {
+        Section("Actions") {
+            Button("Reset settings") {
                 showingResetAlert = true
             }
             .foregroundColor(.red)
             
-            Button("Einstellungen exportieren") {
+            Button("Export settings") {
                 exportSettings()
             }
         }
@@ -285,7 +285,7 @@ struct SettingsView: View {
         
         // Simple MQTT connection test using CocoaMQTT
         guard let port = UInt16(settings.mqttPort) else {
-            testConnectionResult = "❌ Ungültiger Port"
+            testConnectionResult = "❌ Invalid port"
             isTestingConnection = false
             return
         }
@@ -301,15 +301,15 @@ struct SettingsView: View {
         
         testClient.didConnectAck = { _, ack in
             if ack == .accept {
-                connectionResult = "✅ MQTT Verbindung erfolgreich"
+                connectionResult = "✅ MQTT connection successful"
                 testClient.disconnect()
             } else {
-                connectionResult = "❌ MQTT Verbindung abgelehnt: \(ack)"
+                connectionResult = "❌ MQTT connection refused: \(ack)"
             }
         }
         
         if !testClient.connect() {
-            testConnectionResult = "❌ MQTT Client konnte nicht gestartet werden"
+            testConnectionResult = "❌ MQTT Client could not be started"
             isTestingConnection = false
             return
         }
@@ -317,7 +317,7 @@ struct SettingsView: View {
         // Wait for connection result
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
             self.isTestingConnection = false
-            self.testConnectionResult = connectionResult ?? "❌ Timeout bei MQTT Verbindung"
+            self.testConnectionResult = connectionResult ?? "❌ Timeout during MQTT connection"
         }
     }
     
@@ -336,15 +336,15 @@ struct SettingsView: View {
                 isTestingConnection = false
                 
                 if let error = error {
-                    testConnectionResult = "Fehler: \(error.localizedDescription)"
+                    testConnectionResult = "Error: \(error.localizedDescription)"
                 } else if let httpResponse = response as? HTTPURLResponse {
                     if httpResponse.statusCode == 200 {
-                        testConnectionResult = "✅ Verbindung erfolgreich"
+                        testConnectionResult = "✅ Connection successful"
                     } else {
                         testConnectionResult = "❌ HTTP \(httpResponse.statusCode)"
                     }
                 } else {
-                    testConnectionResult = "❌ Unbekannter Fehler"
+                    testConnectionResult = "❌ Unknown error"
                 }
             }
         }.resume()

@@ -5,6 +5,7 @@ struct KioskWebView: UIViewRepresentable {
     @EnvironmentObject var kioskManager: KioskManager
     @EnvironmentObject var settings: SettingsManager
     @StateObject private var webViewHandler = WebViewHandler()
+    @State private var lastLoadedURL: String = ""
     
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -34,7 +35,12 @@ struct KioskWebView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        loadContent(in: uiView)
+        // Only reload if the URL has actually changed
+        let currentURL = settings.kioskURL.isEmpty ? "demo" : settings.kioskURL
+        if currentURL != lastLoadedURL {
+            lastLoadedURL = currentURL
+            loadContent(in: uiView)
+        }
     }
     
     func makeCoordinator() -> Coordinator {
@@ -45,9 +51,11 @@ struct KioskWebView: UIViewRepresentable {
         if !settings.kioskURL.isEmpty, let url = URL(string: settings.kioskURL) {
             // Load custom kiosk URL
             webView.load(URLRequest(url: url))
+            lastLoadedURL = settings.kioskURL
         } else {
             // Load demo content
             loadDemoContent(in: webView)
+            lastLoadedURL = "demo"
         }
     }
     
