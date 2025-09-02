@@ -162,7 +162,7 @@ class HomeAssistantClient: ObservableObject {
                 let id = json?["id"] as? Int ?? -1
                 if id != processId {
                     AppLogger.homeAssistant.notice(
-                        "Ignoring event with id \(id); expected \(processId)")
+                        "Ignoring event with id \(id); expected \(self.processId)")
                     return
                 }
 
