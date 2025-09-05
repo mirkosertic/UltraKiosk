@@ -367,7 +367,7 @@ class MQTTManager: ObservableObject {
         let topic = message.topic
         let payload = message.string ?? ""
 
-        AppLogger.mqtt.debug("Received message on \(topic): \(payload)")
+        AppLogger.mqtt.info("Received message on \(topic): \(payload)")
 
         // Handle screensaver button
         if topic.contains("/screensaver/set") {

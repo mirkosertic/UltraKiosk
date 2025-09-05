@@ -15,6 +15,7 @@ class AudioManager: NSObject, ObservableObject {
     private var homeAssistantClient: HomeAssistantClient?
     private var player: AVPlayer?
     private var mixerNode: AVAudioMixerNode?
+    private var playbackObserver: NSObjectProtocol?
     
     override init() {
         super.init()
@@ -28,8 +29,46 @@ class AudioManager: NSObject, ObservableObject {
                                                selector: #selector(handleHomeAssistantPipelineFeedback(_:)),
                                                name: .homeAssistantPipelineFeedback,
                                                object: nil)
+        
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(handleHomeAssistantSpeechToText(_:)),
+                                               name: .homeAssistantSpeechToText,
+                                               object: nil)
+
     }
     
+    // Plays a short feedback sound. Preferred: bundled asset (e.g. "bing.caf").
+    func playFeedbackSound(assetName: String = "bing", assetExtension: String = "caf") {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setActive(true)
+            try session.overrideOutputAudioPort(.speaker)
+        } catch {
+            AppLogger.audio.error("Audio session activation/override failed for feedback: \(String(describing: error))")
+        }
+        
+        if let url = Bundle.main.url(forResource: assetName, withExtension: assetExtension) {
+            let item = AVPlayerItem(url: url)
+            player = AVPlayer(playerItem: item)
+            
+            // Add observer for playback completion
+            playbackObserver = NotificationCenter.default.addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: item,
+                queue: .main
+            ) { [weak self] _ in
+                self?.handlePlaybackCompleted()
+            }
+
+            player?.play()
+            return
+        }
+    }
+
+    @objc private func handleHomeAssistantSpeechToText(_ notification: Notification) {
+        playFeedbackSound(assetName: "Speech_On", assetExtension: "wav")
+    }
+
     @objc private func handleHomeAssistantFormatChanged(_ notification: Notification) {
         guard let userInfo = notification.userInfo else { return }
         let sampleRateInt = userInfo["sample_rate"] as? Int
@@ -45,6 +84,37 @@ class AudioManager: NSObject, ObservableObject {
             return
         }
         playMP3(from: url)
+    }
+    
+    private func handlePlaybackCompleted() {
+        // Remove the observer
+        if let observer = playbackObserver {
+            NotificationCenter.default.removeObserver(observer)
+            playbackObserver = nil
+        }
+        
+        player = nil
+        
+        // Restore audio session for recording
+        do {
+            let session = AVAudioSession.sharedInstance()
+            // Remove the speaker override to restore normal routing
+            try session.overrideOutputAudioPort(.none)
+            // Reconfigure the session for recording
+            setupAudioSession()
+        } catch {
+            AppLogger.audio.error("Failed to restore audio session after playback: \(String(describing: error))")
+        }
+        
+        // Resume recording if it was active before playback
+        if isRecording {
+            stopRecording()
+            
+            // Give a small delay to ensure cleanup is complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.startRecording()
+            }
+        }
     }
     
     func setupAudioSession() {
@@ -88,6 +158,9 @@ class AudioManager: NSObject, ObservableObject {
         let hardwareFormat = inputNode.outputFormat(forBus: 0)
         audioEngine.connect(inputNode, to: mixer, format: hardwareFormat)
         audioEngine.connect(mixer, to: audioEngine.mainMixerNode, format: desiredFormat)
+
+        // Prevent microphone monitoring through speakers while still allowing taps to receive data
+        audioEngine.mainMixerNode.outputVolume = 0
         
         // Install tap on mixer so we receive buffers in the desired format (engine converts)
         mixer.installTap(onBus: 0, bufferSize: 1024, format: desiredFormat) { [weak self] buffer, _ in
@@ -134,7 +207,11 @@ class AudioManager: NSObject, ObservableObject {
     
     func stopRecording() {
         audioEngine?.stop()
-        inputNode?.removeTap(onBus: 0)
+
+        mixerNode?.removeTap(onBus: 0)
+        mixerNode = nil
+        inputNode = nil
+        audioEngine = nil
         
         DispatchQueue.main.async {
             self.isRecording = false
@@ -142,10 +219,24 @@ class AudioManager: NSObject, ObservableObject {
     }
     
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
-        // Convert audio buffer to Data and send to Home Assistant
-        guard let channelData = buffer.floatChannelData?[0] else { return }
+        // Convert Float32 [-1, 1] to signed 16-bit PCM (little-endian) and send
+        guard let floatChannelPointer = buffer.floatChannelData?[0] else { return }
+        let frameCount = Int(buffer.frameLength)
         
-        let audioData = Data(bytes: channelData, count: Int(buffer.frameLength) * MemoryLayout<Float>.size)
+        var pcm16Samples = [Int16](repeating: 0, count: frameCount)
+        for i in 0..<frameCount {
+            let sample = floatChannelPointer[i]
+            // Clamp to [-1, 1]
+            let clamped = max(-1.0, min(1.0, sample))
+            // Scale and convert to Int16 (use 32767 for positive range, 32768 for negative)
+            let scaled: Float = clamped < 0 ? (clamped * 32768.0) : (clamped * 32767.0)
+            let intSample = Int16(scaled)
+            pcm16Samples[i] = Int16(littleEndian: intSample)
+        }
+        
+        let audioData = pcm16Samples.withUnsafeBufferPointer { bufferPtr in
+            Data(buffer: bufferPtr)
+        }
         homeAssistantClient?.sendAudioData(audioData)
     }
     
@@ -162,6 +253,16 @@ class AudioManager: NSObject, ObservableObject {
         
         let item = AVPlayerItem(url: url)
         player = AVPlayer(playerItem: item)
+        
+        // Add observer for playback completion
+        playbackObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handlePlaybackCompleted()
+        }
+
         player?.play()
     }
 }

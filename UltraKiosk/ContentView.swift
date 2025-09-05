@@ -1,7 +1,6 @@
 import SwiftUI
 import AVFoundation
 import Vision
-import AVKit
 
 struct ContentView: View {
     @StateObject private var kioskManager = KioskManager()
@@ -86,13 +85,6 @@ struct ContentView: View {
         if settings.enableMQTT {
             mqttManager.connect()
         }
-        
-        let utterance = AVSpeechUtterance(string: "Guten Tag!")
-        utterance.voice = AVSpeechSynthesisVoice(language: "de-DE")
-        utterance.rate = 0.1
-
-        let synthesizer = AVSpeechSynthesizer()
-        synthesizer.speak(utterance)
     }
     
     private func setupNotifications() {
@@ -105,16 +97,20 @@ struct ContentView: View {
             handleSettingsChanged()
         }
         
-        // Home Assistant audio received
+        // Screensaver notification
         NotificationCenter.default.addObserver(
-            forName: .homeAssistantAudioReceived,
+            forName: .mqttScreensaverActivated,
             object: nil,
             queue: .main
-        ) { notification in
-            if let audioData = notification.object as? Data {
-                //audioManager.playAudioResponse(audioData)
-            }
+        ) { _ in
+            handleScreensaverActivated()
         }
+    }
+ 
+    private func handleScreensaverActivated() {
+        AppLogger.app.info("Activating screensaver")
+        
+        kioskManager.activateScreensaver()
     }
     
     private func handleSettingsChanged() {

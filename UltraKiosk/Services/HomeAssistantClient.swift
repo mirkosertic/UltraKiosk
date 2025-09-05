@@ -14,8 +14,14 @@ class HomeAssistantClient: ObservableObject {
     private var processId: Int = 0
     private var conversationId: String = ""
 
+    private var pipelineTimeoutTimer: Timer?
+    private let pipelineTimeout: TimeInterval = 30
+    
     init() {
-        setupWebSocket()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+            self.setupWebSocket()
+        }
 
         // Listen for settings changes
         NotificationCenter.default.addObserver(
@@ -38,17 +44,25 @@ class HomeAssistantClient: ObservableObject {
     private func reconnectIfNeeded() {
         // Reconnect if settings changed and we have valid configuration
         if !settings.accessToken.isEmpty && !settings.homeAssistantIP.isEmpty {
+            AppLogger.homeAssistant.info("Reconnecting to Home Assistant WebSocket")
+
+            pipelineTimeoutTimer?.invalidate()
+            pipelineTimeoutTimer = nil
+
             webSocketTask?.cancel()
             setupWebSocket()
         }
     }
 
     private func setupWebSocket() {
+        AppLogger.homeAssistant.info("Connecting to homeassistant")
+        
         guard !settings.accessToken.isEmpty,
             !settings.homeAssistantIP.isEmpty,
             let url = URL(string: "\(baseURL)/api/websocket")
         else {
             updateConnectionStatus("Configuration incomplete")
+            AppLogger.homeAssistant.warning("Connection incomplete")
             return
         }
 
@@ -60,12 +74,14 @@ class HomeAssistantClient: ObservableObject {
 
     private func updateConnectionStatus(_ status: String) {
         DispatchQueue.main.async {
+            AppLogger.homeAssistant.info("Connected")
             self.connectionStatus = status
             self.isConnected = (status == "Connected")
         }
     }
 
     private func connectWebSocket() {
+        AppLogger.homeAssistant.info("Connecting")
         updateConnectionStatus("Connecting...")
         webSocketTask?.resume()
 
@@ -73,12 +89,15 @@ class HomeAssistantClient: ObservableObject {
         receiveMessage()
 
         // Send authentication after connection
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        //DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             self.authenticateWithHomeAssistant()
-        }
+        //}
     }
 
     private func authenticateWithHomeAssistant() {
+        
+        AppLogger.homeAssistant.info("Sending authentication")
+        
         let authMessage = [
             "type": "auth",
             "access_token": accessToken,
@@ -90,7 +109,10 @@ class HomeAssistantClient: ObservableObject {
     private func sendMessage(_ message: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: message),
             let string = String(data: data, encoding: .utf8)
-        else { return }
+        else {
+            AppLogger.homeAssistant.error("JSON marshalling error")
+            return
+        }
 
         let message = URLSessionWebSocketTask.Message.string(string)
         webSocketTask?.send(message) { error in
@@ -108,7 +130,7 @@ class HomeAssistantClient: ObservableObject {
                 case .string(let text):
                     self?.handleMessage(text)
                 case .data(let data):
-                    self?.handleAudioData(data)
+                    AppLogger.homeAssistant.debug("Received binary data: \(data), don know how to handle")
                 @unknown default:
                     break
                 }
@@ -139,7 +161,11 @@ class HomeAssistantClient: ObservableObject {
             "input": [
                 "sample_rate": 16000,
                 "device_id": "Unknown",
-                "timeout": 3,
+                "timeout": 10,
+                "noise_suppression_level": 2,
+                "auto_gain_dbfs": 20,
+                "volume_multiplier": 1.5,
+
             ],
         ]
 
@@ -151,20 +177,13 @@ class HomeAssistantClient: ObservableObject {
 
     private func handleMessage(_ message: String) {
         // Handle text messages from Home Assistant
-        AppLogger.homeAssistant.debug("Received message: \(message)")
+        AppLogger.homeAssistant.info("Received message: \(message)")
 
         if let data = message.data(using: .utf8) {
             do {
                 let json =
                     try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
                 AppLogger.homeAssistant.debug("Parsed JSON message")
-
-                let id = json?["id"] as? Int ?? -1
-                if id != processId {
-                    AppLogger.homeAssistant.notice(
-                        "Ignoring event with id \(id); expected \(self.processId)")
-                    return
-                }
 
                 if json?["type"] as? String == "auth_ok" {
                     AppLogger.homeAssistant.info("Authentication succeeded")
@@ -181,6 +200,14 @@ class HomeAssistantClient: ObservableObject {
                 }
 
                 if json?["type"] as? String == "event" {
+
+                    //let id = json?["id"] as? Int ?? -1
+                    //if id != processId {
+                    //    AppLogger.homeAssistant.notice(
+                    //        "Ignoring event with id \(id); expected \(self.processId)")
+                    //    return
+                    //}
+
                     let eventData = json?["event"] as? [String: Any]
                     if eventData?["type"] as? String == "run-start" {
                         AppLogger.homeAssistant.info("Pipeline started")
@@ -191,6 +218,13 @@ class HomeAssistantClient: ObservableObject {
                         currentBinaryData = runnertData?["stt_binary_handler_id"] as? Int ?? -1
                         AppLogger.homeAssistant.debug(
                             "Current binary data handler id: \(self.currentBinaryData)")
+
+                        // Start/Reset pipeline timeout
+                        pipelineTimeoutTimer?.invalidate()
+                        pipelineTimeoutTimer = Timer.scheduledTimer(withTimeInterval: pipelineTimeout, repeats: false) { [weak self] _ in
+                            AppLogger.homeAssistant.error("Pipeline timeout elapsed without run-end — forcing reconnect")
+                            self?.reconnectIfNeeded()
+                        }
                     }
                     if eventData?["type"] as? String == "wake_word-start" {
                         AppLogger.homeAssistant.info("Wake word detection started")
@@ -245,6 +279,11 @@ class HomeAssistantClient: ObservableObject {
                                 ]
                             )
                         }
+                        
+                        NotificationCenter.default.post(
+                            name: .homeAssistantSpeechToText,
+                            object: nil,
+                        )
                     }
                     if eventData?["type"] as? String == "tts-end" {
                         AppLogger.homeAssistant.info("Text-to-speech finished")
@@ -270,8 +309,13 @@ class HomeAssistantClient: ObservableObject {
                         AppLogger.homeAssistant.error(
                             "Error code=\(code ?? "unknown"), message=\(message ?? "unknown")")
                     }
+
                     if eventData?["type"] as? String == "run-end" {
                         AppLogger.homeAssistant.info("Pipeline ended")
+
+                        pipelineTimeoutTimer?.invalidate()
+                        pipelineTimeoutTimer = nil
+
                         startNewPipeline()
                     }
 
@@ -288,11 +332,6 @@ class HomeAssistantClient: ObservableObject {
         // Received message: {"id":10,"type":"event","event":{"type":"wake_word-start","data":{"entity_id":"wake_word.openwakeword","metadata":{"format":"wav","codec":"pcm","bit_rate":16,"sample_rate":16000,"channel":1},"timeout":3},"timestamp":"2025-08-30T22:07:52.005266+00:00"}}
         // Received message: {"id":10,"type":"event","event":{"type":"error","data":{"code":"wake-word-timeout","message":"Wake word was not detected"},"timestamp":"2025-08-30T22:11:07.741333+00:00"}}
         // Received message: {"id":10,"type":"event","event":{"type":"run-end","data":null,"timestamp":"2025-08-30T22:11:07.743620+00:00"}}
-    }
-
-    private func handleAudioData(_ data: Data) {
-        // Handle audio response from Home Assistant Voice Pipeline
-        NotificationCenter.default.post(name: .homeAssistantAudioReceived, object: data)
     }
 
     func sendAudioData(_ audioData: Data) {
@@ -313,7 +352,7 @@ class HomeAssistantClient: ObservableObject {
 }
 
 extension Notification.Name {
-    static let homeAssistantAudioReceived = Notification.Name("HomeAssistantAudioReceived")
     static let homeAssistantFormatChanged = Notification.Name("HomeAssistantFormatChanged")
     static let homeAssistantPipelineFeedback = Notification.Name("HomeAssistantPipelineFeedback")
+    static let homeAssistantSpeechToText = Notification.Name("HomeAssistantSpeechToText")
 }
