@@ -11,13 +11,15 @@ UltraKiosk is a lightweight iOS app that displays Home Assistant in full‑scree
 - Always‑on voice satellite for Home Assistant Voice Pipeline
 
 ## Screenshots
-> Replace the following placeholders with actual images in your repo (e.g., under `docs/` or `assets/`).
 
-![Start screen / Kiosk WebView](doc/welcome.png)
+*Start screen / Kiosk WebView*
+![Start screen / Kiosk WebView](docs/welcome.png)
 
-![Settings](doc/settings.png)
+*Settings*
+![Settings](docs/settings.png)
 
-![Screensaver](doc/screensaver.png)
+*Screensaver*
+![Screensaver](docs/screensaver.png)
 
 
 ## Installation
