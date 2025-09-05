@@ -13,11 +13,11 @@ UltraKiosk is a lightweight iOS app that displays Home Assistant in full‑scree
 ## Screenshots
 > Replace the following placeholders with actual images in your repo (e.g., under `docs/` or `assets/`).
 
-![Start screen / Kiosk WebView](docs/welcome.png)
+![Start screen / Kiosk WebView](doc/welcome.png)
 
-![Settings](docs/settings.png)
+![Settings](doc/settings.png)
 
-![Screensaver](docs/screensaver.png)
+![Screensaver](doc/screensaver.png)
 
 
 ## Installation
