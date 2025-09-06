@@ -12,6 +12,10 @@ class MQTTManager: ObservableObject {
     private let settings = SettingsManager.shared
     private var batteryTimer: Timer?
     private var reconnectTimer: Timer?
+    
+    // Track if discovery messages have been published in this session
+    private var discoveryMessagesPublished = false
+    private var isReconnecting = false
 
     // Unique device identifiers
     private var deviceIdentifier: String {
@@ -93,8 +97,8 @@ class MQTTManager: ObservableObject {
             return
         }
 
-        // Use device-specific client ID
-        let clientID = "\(deviceSerializedId)_\(Int(Date().timeIntervalSince1970))"
+        // Use persistent client ID to avoid device recreation in Home Assistant
+        let clientID = "\(deviceSerializedId)_kiosk"
         mqttClient = CocoaMQTT(clientID: clientID, host: settings.mqttBrokerIP, port: port)
 
         guard let client = mqttClient else { return }
@@ -130,11 +134,15 @@ class MQTTManager: ObservableObject {
 
     private func reconnectIfNeeded() {
         if settings.enableMQTT {
+            isReconnecting = true
             disconnect()
+            // Reset discovery flag when reconnecting due to settings change
+            discoveryMessagesPublished = false
             setupMQTTClient()
             if settings.enableMQTT && !settings.mqttBrokerIP.isEmpty {
                 connect()
             }
+            isReconnecting = false
         } else {
             disconnect()
         }
@@ -155,6 +163,8 @@ class MQTTManager: ObservableObject {
         mqttClient?.disconnect()
         batteryTimer?.invalidate()
         batteryTimer = nil
+        // Reset discovery flag when disconnecting
+        discoveryMessagesPublished = false
         updateConnectionStatus("Disconnected")
     }
 
@@ -169,7 +179,12 @@ class MQTTManager: ObservableObject {
 
     // MARK: - Home Assistant Discovery
     private func publishDiscoveryMessages() {
-        guard isConnected else { return }
+        guard isConnected, !discoveryMessagesPublished else { 
+            AppLogger.mqtt.debug("Skipping discovery messages - already published or not connected")
+            return 
+        }
+        
+        AppLogger.mqtt.info("Publishing discovery messages for device: \(self.deviceSerializedId)")
 
         // Battery Sensor Discovery
         publishBatterySensorDiscovery()
@@ -182,6 +197,11 @@ class MQTTManager: ObservableObject {
 
         // App Info Sensor Discovery
         publishAppInfoSensorDiscovery()
+        
+        // Mark discovery messages as published
+        discoveryMessagesPublished = true
+        
+        AppLogger.mqtt.info("Discovery messages published successfully")
     }
 
     private func publishBatterySensorDiscovery() {
@@ -452,7 +472,7 @@ extension MQTTManager: CocoaMQTTDelegate {
         if ack == .accept {
             updateConnectionStatus("Connected")
 
-            // Publish discovery messages
+            // Publish discovery messages only once per session
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 self.publishDiscoveryMessages()
                 self.subscribeToCommands()
