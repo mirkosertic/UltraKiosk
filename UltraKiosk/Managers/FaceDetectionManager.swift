@@ -12,6 +12,11 @@ class FaceDetectionManager: NSObject, ObservableObject {
     private let videoOutput = AVCaptureVideoDataOutput()
     private let sessionQueue = DispatchQueue(label: "camera.session.queue")
     
+    // Frame rate limiting properties
+    private var lastDetectionTime: CFTimeInterval = 0
+    private let detectionInterval: CFTimeInterval = 0.2 // 5 times per second (1/5 = 0.2)
+    private var pendingPixelBuffer: CVPixelBuffer?
+    
     override init() {
         super.init()
         setupCamera()
@@ -70,12 +75,17 @@ class FaceDetectionManager: NSObject, ObservableObject {
     func getPreviewLayer() -> AVCaptureVideoPreviewLayer? {
         return previewLayer
     }
-}
-
-extension FaceDetectionManager: AVCaptureVideoDataOutputSampleBufferDelegate {
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        
+    
+    private func shouldProcessFrame() -> Bool {
+        let currentTime = CACurrentMediaTime()
+        if currentTime - lastDetectionTime >= detectionInterval {
+            lastDetectionTime = currentTime
+            return true
+        }
+        return false
+    }
+    
+    private func processFaceDetection(pixelBuffer: CVPixelBuffer) {
         let request = VNDetectFaceRectanglesRequest { [weak self] request, error in
             guard let results = request.results as? [VNFaceObservation] else { return }
             
@@ -89,5 +99,19 @@ extension FaceDetectionManager: AVCaptureVideoDataOutputSampleBufferDelegate {
         
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
         try? handler.perform([request])
+    }
+}
+
+extension FaceDetectionManager: AVCaptureVideoDataOutputSampleBufferDelegate {
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        
+        // Store the latest frame for potential processing
+        pendingPixelBuffer = pixelBuffer
+        
+        // Only process face detection if enough time has passed
+        if shouldProcessFrame() {
+            processFaceDetection(pixelBuffer: pixelBuffer)
+        }
     }
 }
