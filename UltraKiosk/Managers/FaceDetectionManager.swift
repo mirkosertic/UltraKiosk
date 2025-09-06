@@ -25,7 +25,7 @@ class FaceDetectionManager: NSObject, ObservableObject {
     
     private func configureCaptureSession() {
         captureSession = AVCaptureSession()
-        captureSession?.sessionPreset = .medium
+        captureSession?.sessionPreset = .low
         
         guard let frontCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
               let input = try? AVCaptureDeviceInput(device: frontCamera),
