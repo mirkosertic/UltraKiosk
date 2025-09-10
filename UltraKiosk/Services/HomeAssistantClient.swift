@@ -156,15 +156,16 @@ class HomeAssistantClient: ObservableObject {
         let startPipelineMessage: [String: Any] = [
             "id": processId,
             "type": "assist_pipeline/run",
-            "start_stage": "wake_word",
+            "start_stage": "wake_words",
             "end_stage": "tts",
             "input": [
-                "sample_rate": 16000,
-                "device_id": "Unknown",
-                "timeout": 10,
-                "noise_suppression_level": 2,
-                "auto_gain_dbfs": 20,
-                "volume_multiplier": 1.5,
+                "sample_rate": settings.voiceSampleRate,
+                "device_id": MQTTManager.computeDeviceSerializedId(),
+                //"device_id": "unknown",
+                "timeout": settings.voiceTimeout,
+                "noise_suppression_level": settings.voiceNoiseSuppressionLevel,
+                "auto_gain_dbfs": settings.voiceAutoGainDbfs,
+                "volume_multiplier": settings.voiceVolumeMultiplier,
 
             ],
         ]

@@ -24,8 +24,11 @@ class MQTTManager: ObservableObject {
     }
 
     private var deviceSerializedId: String {
-        // Create a short, readable ID from the vendor identifier
-        let fullId = deviceIdentifier
+        return MQTTManager.computeDeviceSerializedId()
+    }
+
+    static func computeDeviceSerializedId() -> String {
+        let fullId = UIDevice.current.identifierForVendor?.uuidString ?? "unknown_device"
         let shortId = String(fullId.replacingOccurrences(of: "-", with: "").prefix(12)).lowercased()
         return "ipad_\(shortId)"
     }
@@ -74,6 +77,9 @@ class MQTTManager: ObservableObject {
         ) { _ in
             self.reconnectIfNeeded()
         }
+
+        // Publish settings states when values change
+        attachSettingsChangePublisher()
     }
 
     deinit {
@@ -119,11 +125,6 @@ class MQTTManager: ObservableObject {
 
         // Set delegates
         client.delegate = self
-
-        // Last will and testament
-        let willTopic = "\(settings.mqttTopicPrefix)/binary_sensor/\(deviceSerializedId)/status"
-        client.willMessage = CocoaMQTTMessage(
-            topic: willTopic, string: "offline", qos: .qos1, retained: true)
 
         updateConnectionStatus("Configured")
 
@@ -198,6 +199,9 @@ class MQTTManager: ObservableObject {
         // App Info Sensor Discovery
         publishAppInfoSensorDiscovery()
         
+        // Settings Discovery
+        publishSettingsDiscovery()
+        
         // Mark discovery messages as published
         discoveryMessagesPublished = true
         
@@ -216,14 +220,6 @@ class MQTTManager: ObservableObject {
             "json_attributes_topic":
                 "\(settings.mqttTopicPrefix)/sensor/\(deviceSerializedId)/battery/attributes",
             "device": deviceInfo,
-            "availability": [
-                [
-                    "topic":
-                        "\(settings.mqttTopicPrefix)/binary_sensor/\(deviceSerializedId)/status",
-                    "payload_available": "online",
-                    "payload_not_available": "offline",
-                ]
-            ],
         ]
 
         publishJSON(topic: topic, payload: config, retain: true)
@@ -239,14 +235,6 @@ class MQTTManager: ObservableObject {
                 "\(settings.mqttTopicPrefix)/button/\(deviceSerializedId)/screensaver/set",
             "device": deviceInfo,
             "icon": "mdi:monitor-off",
-            "availability": [
-                [
-                    "topic":
-                        "\(settings.mqttTopicPrefix)/binary_sensor/\(deviceSerializedId)/status",
-                    "payload_available": "online",
-                    "payload_not_available": "offline",
-                ]
-            ],
         ]
 
         publishJSON(topic: topic, payload: config, retain: true)
@@ -280,14 +268,6 @@ class MQTTManager: ObservableObject {
                 "\(settings.mqttTopicPrefix)/sensor/\(deviceSerializedId)/app_info/attributes",
             "icon": "mdi:information",
             "device": deviceInfo,
-            "availability": [
-                [
-                    "topic":
-                        "\(settings.mqttTopicPrefix)/binary_sensor/\(deviceSerializedId)/status",
-                    "payload_available": "online",
-                    "payload_not_available": "offline",
-                ]
-            ],
         ]
 
         publishJSON(topic: topic, payload: config, retain: true)
@@ -301,6 +281,11 @@ class MQTTManager: ObservableObject {
         publishAppInfo()
 
         // Setup periodic battery updates
+        scheduleBatteryTimer()
+    }
+
+    private func scheduleBatteryTimer() {
+        batteryTimer?.invalidate()
         batteryTimer = Timer.scheduledTimer(
             withTimeInterval: settings.mqttBatteryUpdateInterval, repeats: true
         ) { _ in
@@ -381,6 +366,9 @@ class MQTTManager: ObservableObject {
         client.subscribe(screensaverTopic, qos: .qos1)
 
         AppLogger.mqtt.info("Subscribed to \(screensaverTopic)")
+
+        // Subscribe to settings command topics
+        subscribeToSettingsCommands()
     }
 
     private func handleIncomingMessage(_ message: CocoaMQTTMessage) {
@@ -395,6 +383,9 @@ class MQTTManager: ObservableObject {
                 NotificationCenter.default.post(name: .mqttScreensaverActivated, object: nil)
             }
         }
+
+        // Handle settings updates
+        handleSettingsCommand(topic: topic, payload: payload)
     }
 
     // MARK: - Publishing Helpers
@@ -477,6 +468,7 @@ extension MQTTManager: CocoaMQTTDelegate {
                 self.publishDiscoveryMessages()
                 self.subscribeToCommands()
                 self.startPeriodicUpdates()
+                self.publishAllSettingsStates()
             }
         } else {
             updateConnectionStatus("Connection refused: \(ack)")
@@ -536,4 +528,204 @@ extension Notification.Name {
     static let mqttScreensaverActivated = Notification.Name("MQTTScreensaverActivated")
     static let mqttConnected = Notification.Name("MQTTConnected")
     static let mqttDisconnected = Notification.Name("MQTTDisconnected")
+}
+
+// MARK: - Settings over MQTT (Discovery, Commands, States)
+extension MQTTManager {
+    private var settingsBaseTopic: String { "\(settings.mqttTopicPrefix)" }
+
+    private func publishSettingsDiscovery() {
+        // number entities
+        publishNumberDiscovery(
+            key: "mqttBatteryUpdateInterval",
+            name: "Battery Update Interval",
+            min: 30, max: 600, step: 30, unit: "s", icon: "mdi:battery-clock"
+        )
+        publishNumberDiscovery(
+            key: "screensaverTimeout",
+            name: "Screensaver Timeout",
+            min: 10, max: 1800, step: 10, unit: "s", icon: "mdi:monitor-off"
+        )
+        publishNumberDiscovery(
+            key: "screenBrightnessDimmed",
+            name: "Screen Brightness (Dimmed)",
+            min: 0.05, max: 0.8, step: 0.05, unit: nil, icon: "mdi:brightness-4"
+        )
+        publishNumberDiscovery(
+            key: "screenBrightnessNormal",
+            name: "Screen Brightness (Normal)",
+            min: 0.3, max: 1.0, step: 0.05, unit: nil, icon: "mdi:brightness-7"
+        )
+        publishNumberDiscovery(
+            key: "faceDetectionInterval",
+            name: "Face Detection Interval",
+            min: 0.1, max: 5.0, step: 0.1, unit: "s", icon: "mdi:face-recognition"
+        )
+        publishNumberDiscovery(
+            key: "voiceTimeout",
+            name: "Voice Timeout",
+            min: 1, max: 60, step: 1, unit: "s", icon: "mdi:timer"
+        )
+        publishNumberDiscovery(
+            key: "voiceNoiseSuppressionLevel",
+            name: "Noise Suppression Level",
+            min: 0, max: 3, step: 1, unit: nil, icon: "mdi:equalizer"
+        )
+        publishNumberDiscovery(
+            key: "voiceAutoGainDbfs",
+            name: "Auto Gain (dBFS)",
+            min: 0, max: 40, step: 1, unit: "dB", icon: "mdi:volume-equal"
+        )
+        publishNumberDiscovery(
+            key: "voiceVolumeMultiplier",
+            name: "Volume Multiplier",
+            min: 0.5, max: 3.0, step: 0.1, unit: "x", icon: "mdi:volume-high"
+        )
+
+        // select entity for sample rate
+        publishSelectDiscovery(
+            key: "voiceSampleRate",
+            name: "Voice Sample Rate",
+            options: ["8000","12000","16000","22050","32000","44100"],
+            icon: "mdi:waveform"
+        )
+    }
+
+    private func componentTopics(component: String, key: String) -> (config: String, state: String, command: String) {
+        let basePath = "\(settingsBaseTopic)/\(component)/\(deviceSerializedId)/\(key)"
+        return (
+            config: "\(basePath)/config",
+            state: "\(basePath)/state",
+            command: "\(basePath)/set"
+        )
+    }
+
+    private func publishNumberDiscovery(key: String, name: String, min: Double, max: Double, step: Double, unit: String?, icon: String?) {
+        let topics = componentTopics(component: "number", key: key)
+        var config: [String: Any] = [
+            "name": "\(deviceName) \(name)",
+            "unique_id": "\(deviceSerializedId)_\(key)",
+            "device": deviceInfo,
+            "state_topic": topics.state,
+            "command_topic": topics.command,
+            "min": min,
+            "max": max,
+            "step": step,
+        ]
+        if let unit = unit { config["unit_of_measurement"] = unit }
+        if let icon = icon { config["icon"] = icon }
+        publishJSON(topic: topics.config, payload: config, retain: true)
+    }
+
+    private func publishSelectDiscovery(key: String, name: String, options: [String], icon: String?) {
+        let topics = componentTopics(component: "select", key: key)
+        var config: [String: Any] = [
+            "name": "\(deviceName) \(name)",
+            "unique_id": "\(deviceSerializedId)_\(key)",
+            "device": deviceInfo,
+            "state_topic": topics.state,
+            "command_topic": topics.command,
+            "options": options,
+        ]
+        if let icon = icon { config["icon"] = icon }
+        publishJSON(topic: topics.config, payload: config, retain: true)
+    }
+
+    private func subscribeToSettingsCommands() {
+        guard let client = mqttClient else { return }
+
+        let keysNumber = [
+            "mqttBatteryUpdateInterval",
+            "screensaverTimeout",
+            "screenBrightnessDimmed",
+            "screenBrightnessNormal",
+            "faceDetectionInterval",
+            "voiceTimeout",
+            "voiceNoiseSuppressionLevel",
+            "voiceAutoGainDbfs",
+            "voiceVolumeMultiplier",
+        ]
+
+        for key in keysNumber {
+            let topic = componentTopics(component: "number", key: key).command
+            client.subscribe(topic, qos: .qos1)
+            AppLogger.mqtt.info("Subscribed to \(topic)")
+        }
+
+        let sampleRateTopic = componentTopics(component: "select", key: "voiceSampleRate").command
+        client.subscribe(sampleRateTopic, qos: .qos1)
+        AppLogger.mqtt.info("Subscribed to \(sampleRateTopic)")
+    }
+
+    private func publishAllSettingsStates() {
+        // number states
+        publishNumberState(key: "mqttBatteryUpdateInterval", value: settings.mqttBatteryUpdateInterval)
+        publishNumberState(key: "screensaverTimeout", value: settings.screensaverTimeout)
+        publishNumberState(key: "screenBrightnessDimmed", value: settings.screenBrightnessDimmed)
+        publishNumberState(key: "screenBrightnessNormal", value: settings.screenBrightnessNormal)
+        publishNumberState(key: "faceDetectionInterval", value: settings.faceDetectionInterval)
+        publishNumberState(key: "voiceTimeout", value: Double(settings.voiceTimeout))
+        publishNumberState(key: "voiceNoiseSuppressionLevel", value: Double(settings.voiceNoiseSuppressionLevel))
+        publishNumberState(key: "voiceAutoGainDbfs", value: Double(settings.voiceAutoGainDbfs))
+        publishNumberState(key: "voiceVolumeMultiplier", value: settings.voiceVolumeMultiplier)
+
+        // select state
+        publishSelectState(key: "voiceSampleRate", value: String(settings.voiceSampleRate))
+    }
+
+    private func publishNumberState(key: String, value: Double) {
+        let topic = componentTopics(component: "number", key: key).state
+        let formatted: String
+        if abs(value.rounded() - value) < 0.00001 {
+            formatted = String(Int(value))
+        } else {
+            formatted = String(format: "%.3f", value)
+        }
+        publish(topic: topic, payload: formatted, retain: true)
+    }
+
+    private func publishSelectState(key: String, value: String) {
+        let topic = componentTopics(component: "select", key: key).state
+        publish(topic: topic, payload: value, retain: true)
+    }
+
+    private func handleSettingsCommand(topic: String, payload: String) {
+        // number handlers
+        func matches(_ component: String, _ key: String) -> Bool {
+            return topic == componentTopics(component: component, key: key).command
+        }
+
+        let doublePayload = Double(payload)
+
+        if matches("number", "mqttBatteryUpdateInterval"), let v = doublePayload { settings.mqttBatteryUpdateInterval = v; publishNumberState(key: "mqttBatteryUpdateInterval", value: v); scheduleBatteryTimer(); return }
+        if matches("number", "screensaverTimeout"), let v = doublePayload { settings.screensaverTimeout = v; publishNumberState(key: "screensaverTimeout", value: v); return }
+        if matches("number", "screenBrightnessDimmed"), let v = doublePayload { settings.screenBrightnessDimmed = v; publishNumberState(key: "screenBrightnessDimmed", value: v); return }
+        if matches("number", "screenBrightnessNormal"), let v = doublePayload { settings.screenBrightnessNormal = v; publishNumberState(key: "screenBrightnessNormal", value: v); return }
+        if matches("number", "faceDetectionInterval"), let v = doublePayload { settings.faceDetectionInterval = v; publishNumberState(key: "faceDetectionInterval", value: v); return }
+        if matches("number", "voiceTimeout"), let v = Int(payload) { settings.voiceTimeout = v; publishNumberState(key: "voiceTimeout", value: Double(v)); return }
+        if matches("number", "voiceNoiseSuppressionLevel"), let v = Int(payload) { settings.voiceNoiseSuppressionLevel = v; publishNumberState(key: "voiceNoiseSuppressionLevel", value: Double(v)); return }
+        if matches("number", "voiceAutoGainDbfs"), let v = Int(payload) { settings.voiceAutoGainDbfs = v; publishNumberState(key: "voiceAutoGainDbfs", value: Double(v)); return }
+        if matches("number", "voiceVolumeMultiplier"), let v = doublePayload { settings.voiceVolumeMultiplier = v; publishNumberState(key: "voiceVolumeMultiplier", value: v); return }
+
+        // select handlers
+        if matches("select", "voiceSampleRate"), let v = Int(payload) {
+            let allowed = [8000, 12000, 16000, 22050, 32000, 44100]
+            if allowed.contains(v) {
+                settings.voiceSampleRate = v
+                publishSelectState(key: "voiceSampleRate", value: String(v))
+            }
+            return
+        }
+    }
+
+    // Observe settings changes to republish states
+    func attachSettingsChangePublisher() {
+        NotificationCenter.default.addObserver(
+            forName: .settingsChanged,
+            object: nil,
+            queue: .main
+        ) { _ in
+            if self.isConnected { self.publishAllSettingsStates(); self.scheduleBatteryTimer() }
+        }
+    }
 }

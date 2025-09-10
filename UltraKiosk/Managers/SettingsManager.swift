@@ -5,6 +5,12 @@ import Combine
 class SettingsManager: ObservableObject {
     static let shared = SettingsManager()
     
+    // MARK: - App Groups Container
+    private let appGroupID = "group.de.mirkosertic.UltraKiosk.settings"
+    private var userDefaults: UserDefaults {
+        return UserDefaults(suiteName: appGroupID) ?? UserDefaults.standard
+    }
+    
     // MARK: - Published Settings
     @Published var homeAssistantIP: String = "homeassistant.local" {
         didSet { save() }
@@ -30,7 +36,7 @@ class SettingsManager: ObservableObject {
         didSet { save() }
     }
     
-    @Published var mqttUsername: String = "" {
+    @Published var mqttUsername: String = "homeassistant" {
         didSet { save() }
     }
     
@@ -66,11 +72,36 @@ class SettingsManager: ObservableObject {
         didSet { save() }
     }
     
-    @Published var enableVoiceActivation: Bool = true {
+    @Published var enableVoiceActivation: Bool = false {
         didSet { save() }
     }
     
     @Published var kioskURL: String = "" {
+        didSet { save() }
+    }
+    
+    @Published var faceDetectionInterval: Double = 1.0 { // seconds between detections
+        didSet { save() }
+    }
+    
+    // Voice pipeline settings
+    @Published var voiceSampleRate: Int = 16000 {
+        didSet { save() }
+    }
+    
+    @Published var voiceTimeout: Int = 10 {
+        didSet { save() }
+    }
+    
+    @Published var voiceNoiseSuppressionLevel: Int = 2 {
+        didSet { save() }
+    }
+    
+    @Published var voiceAutoGainDbfs: Int = 20 {
+        didSet { save() }
+    }
+    
+    @Published var voiceVolumeMultiplier: Double = 1.5 {
         didSet { save() }
     }
     
@@ -93,6 +124,13 @@ class SettingsManager: ObservableObject {
         static let screenBrightnessNormal = "screenBrightnessNormal"
         static let enableVoiceActivation = "enableVoiceActivation"
         static let kioskURL = "kioskURL"
+        static let faceDetectionInterval = "faceDetectionInterval"
+        // Voice pipeline keys
+        static let voiceSampleRate = "voiceSampleRate"
+        static let voiceTimeout = "voiceTimeout"
+        static let voiceNoiseSuppressionLevel = "voiceNoiseSuppressionLevel"
+        static let voiceAutoGainDbfs = "voiceAutoGainDbfs"
+        static let voiceVolumeMultiplier = "voiceVolumeMultiplier"
     }
     
     private init() {
@@ -132,7 +170,7 @@ class SettingsManager: ObservableObject {
     
     // MARK: - Settings Management
     private func loadSettings() {
-        let defaults = UserDefaults.standard
+        let defaults = userDefaults
         
         homeAssistantIP = defaults.string(forKey: Keys.homeAssistantIP) ?? "homeassistant.local"
         homeAssistantPort = defaults.string(forKey: Keys.homeAssistantPort) ?? "8123"
@@ -142,7 +180,7 @@ class SettingsManager: ObservableObject {
         // MQTT Settings
         mqttBrokerIP = defaults.string(forKey: Keys.mqttBrokerIP) ?? "192.168.1.100"
         mqttPort = defaults.string(forKey: Keys.mqttPort) ?? "1883"
-        mqttUsername = defaults.string(forKey: Keys.mqttUsername) ?? ""
+        mqttUsername = defaults.string(forKey: Keys.mqttUsername) ?? "homeassistant"
         mqttPassword = defaults.string(forKey: Keys.mqttPassword) ?? ""
         mqttUseTLS = defaults.bool(forKey: Keys.mqttUseTLS)
         mqttTopicPrefix = defaults.string(forKey: Keys.mqttTopicPrefix) ?? "homeassistant"
@@ -157,12 +195,30 @@ class SettingsManager: ObservableObject {
         screenBrightnessNormal = defaults.double(forKey: Keys.screenBrightnessNormal) != 0
         ? defaults.double(forKey: Keys.screenBrightnessNormal) : 1.0
         enableVoiceActivation = defaults.object(forKey: Keys.enableVoiceActivation) != nil
-        ? defaults.bool(forKey: Keys.enableVoiceActivation) : true
-        kioskURL = defaults.string(forKey: Keys.kioskURL) ?? ""
+        ? defaults.bool(forKey: Keys.enableVoiceActivation) : false
+        kioskURL = defaults.string(forKey: Keys.kioskURL) ?? "http://homeassistant.local:8123/anzeige-flur/0?kios=true"
+        faceDetectionInterval = defaults.double(forKey: Keys.faceDetectionInterval) != 0
+        ? defaults.double(forKey: Keys.faceDetectionInterval) : 1.0
+        
+        // Voice pipeline settings
+        let sr = defaults.integer(forKey: Keys.voiceSampleRate)
+        voiceSampleRate = sr != 0 ? sr : 16000
+        let to = defaults.integer(forKey: Keys.voiceTimeout)
+        voiceTimeout = to != 0 ? to : 10
+        let ns = defaults.integer(forKey: Keys.voiceNoiseSuppressionLevel)
+        voiceNoiseSuppressionLevel = ns != 0 ? ns : 2
+        // 0 could be a valid value for auto gain, so we check object existence
+        if defaults.object(forKey: Keys.voiceAutoGainDbfs) != nil {
+            voiceAutoGainDbfs = defaults.integer(forKey: Keys.voiceAutoGainDbfs)
+        } else {
+            voiceAutoGainDbfs = 20
+        }
+        let vm = defaults.double(forKey: Keys.voiceVolumeMultiplier)
+        voiceVolumeMultiplier = vm != 0 ? vm : 1.5
     }
     
     private func save() {
-        let defaults = UserDefaults.standard
+        let defaults = userDefaults
         
         defaults.set(homeAssistantIP, forKey: Keys.homeAssistantIP)
         defaults.set(homeAssistantPort, forKey: Keys.homeAssistantPort)
@@ -184,6 +240,16 @@ class SettingsManager: ObservableObject {
         defaults.set(screenBrightnessNormal, forKey: Keys.screenBrightnessNormal)
         defaults.set(enableVoiceActivation, forKey: Keys.enableVoiceActivation)
         defaults.set(kioskURL, forKey: Keys.kioskURL)
+        defaults.set(faceDetectionInterval, forKey: Keys.faceDetectionInterval)
+        
+        // Voice pipeline settings
+        defaults.set(voiceSampleRate, forKey: Keys.voiceSampleRate)
+        defaults.set(voiceTimeout, forKey: Keys.voiceTimeout)
+        defaults.set(voiceNoiseSuppressionLevel, forKey: Keys.voiceNoiseSuppressionLevel)
+        defaults.set(voiceAutoGainDbfs, forKey: Keys.voiceAutoGainDbfs)
+        defaults.set(voiceVolumeMultiplier, forKey: Keys.voiceVolumeMultiplier)
+        
+        defaults.synchronize()
         
         // Notify observers that settings have changed
         NotificationCenter.default.post(name: .settingsChanged, object: nil)
@@ -213,6 +279,11 @@ class SettingsManager: ObservableObject {
         // Validate timeout
         if screensaverTimeout < 10 {
             issues.append("Screensaver timeout should be at least 10 seconds")
+        }
+        
+        // Validate face detection interval
+        if faceDetectionInterval < 0.1 {
+            issues.append("Face detection interval should be at least 0.1 seconds")
         }
         
         return issues
@@ -248,6 +319,13 @@ class SettingsManager: ObservableObject {
             "screenBrightnessNormal": screenBrightnessNormal,
             "enableVoiceActivation": enableVoiceActivation,
             "kioskURL": kioskURL,
+            "faceDetectionInterval": faceDetectionInterval,
+            // Voice pipeline
+            "voiceSampleRate": voiceSampleRate,
+            "voiceTimeout": voiceTimeout,
+            "voiceNoiseSuppressionLevel": voiceNoiseSuppressionLevel,
+            "voiceAutoGainDbfs": voiceAutoGainDbfs,
+            "voiceVolumeMultiplier": voiceVolumeMultiplier,
         ]
     }
     
@@ -270,6 +348,14 @@ class SettingsManager: ObservableObject {
         screenBrightnessNormal = settings["screenBrightnessNormal"] as? Double ?? screenBrightnessNormal
         enableVoiceActivation = settings["enableVoiceActivation"] as? Bool ?? enableVoiceActivation
         kioskURL = settings["kioskURL"] as? String ?? kioskURL
+        faceDetectionInterval = settings["faceDetectionInterval"] as? Double ?? faceDetectionInterval
+        
+        // Voice pipeline
+        if let v = settings["voiceSampleRate"] as? Int { voiceSampleRate = v }
+        if let v = settings["voiceTimeout"] as? Int { voiceTimeout = v }
+        if let v = settings["voiceNoiseSuppressionLevel"] as? Int { voiceNoiseSuppressionLevel = v }
+        if let v = settings["voiceAutoGainDbfs"] as? Int { voiceAutoGainDbfs = v }
+        if let v = settings["voiceVolumeMultiplier"] as? Double { voiceVolumeMultiplier = v }
     }
     
     // MARK: - Reset
@@ -293,5 +379,13 @@ class SettingsManager: ObservableObject {
         screenBrightnessNormal = 1.0
         enableVoiceActivation = true
         kioskURL = ""
+        faceDetectionInterval = 1.0
+        
+        // Voice pipeline defaults
+        voiceSampleRate = 16000
+        voiceTimeout = 10
+        voiceNoiseSuppressionLevel = 2
+        voiceAutoGainDbfs = 20
+        voiceVolumeMultiplier = 1.5
     }
 }

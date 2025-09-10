@@ -225,12 +225,63 @@ struct SettingsView: View {
                 Text("Screen brightness (normal): \(Int(settings.screenBrightnessNormal * 100))%")
                 Slider(value: $settings.screenBrightnessNormal, in: 0.3...1.0, step: 0.05)
             }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(String(format: "Detection interval: %.1fs", settings.faceDetectionInterval))
+                Slider(value: $settings.faceDetectionInterval, in: 0.1...5.0, step: 0.1) {
+                    Text("Interval")
+                } minimumValueLabel: {
+                    Text("0.1s")
+                } maximumValueLabel: {
+                    Text("5s")
+                }
+            }
         }
     }
     
     private var voiceSection: some View {
         Section("Voice control") {
             Toggle("Enable voice activation", isOn: $settings.enableVoiceActivation)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Sample rate: \(settings.voiceSampleRate) Hz")
+                let supportedSampleRates: [Int] = [8000, 12000, 16000, 22050, 32000, 44100]
+                Picker("Sample rate", selection: $settings.voiceSampleRate) {
+                    ForEach(supportedSampleRates, id: \.self) { rate in
+                        Text("\(rate / 1000) kHz").tag(rate)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Timeout: \(settings.voiceTimeout)s")
+                Slider(value: Binding(
+                    get: { Double(settings.voiceTimeout) },
+                    set: { settings.voiceTimeout = Int($0) }
+                ), in: 1...60, step: 1)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Noise suppression level: \(settings.voiceNoiseSuppressionLevel)")
+                Slider(value: Binding(
+                    get: { Double(settings.voiceNoiseSuppressionLevel) },
+                    set: { settings.voiceNoiseSuppressionLevel = Int($0) }
+                ), in: 0...3, step: 1)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Auto gain (dBFS): \(settings.voiceAutoGainDbfs)")
+                Slider(value: Binding(
+                    get: { Double(settings.voiceAutoGainDbfs) },
+                    set: { settings.voiceAutoGainDbfs = Int($0) }
+                ), in: 0...40, step: 1)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text(String(format: "Volume multiplier: %.2f×", settings.voiceVolumeMultiplier))
+                Slider(value: $settings.voiceVolumeMultiplier, in: 0.5...3.0, step: 0.1)
+            }
         }
     }
     

@@ -14,12 +14,38 @@ class FaceDetectionManager: NSObject, ObservableObject {
     
     // Frame rate limiting properties
     private var lastDetectionTime: CFTimeInterval = 0
-    private let detectionInterval: CFTimeInterval = 0.2 // 5 times per second (1/5 = 0.2)
+    private var detectionInterval: CFTimeInterval = SettingsManager.shared.faceDetectionInterval
     private var pendingPixelBuffer: CVPixelBuffer?
     
     override init() {
         super.init()
         setupCamera()
+    }
+    
+    func updateDetectionInterval(_ newInterval: CFTimeInterval) {
+        sessionQueue.async { [weak self] in
+            self?.detectionInterval = newInterval
+            self?.lastDetectionTime = 0
+        }
+    }
+    
+    func reinitialize(withInterval newInterval: CFTimeInterval) {
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            let wasDetecting = self.isDetecting
+            self.captureSession?.stopRunning()
+            self.captureSession = nil
+            self.previewLayer = nil
+            self.detectionInterval = newInterval
+            self.lastDetectionTime = 0
+            self.configureCaptureSession()
+            if wasDetecting {
+                self.captureSession?.startRunning()
+                DispatchQueue.main.async {
+                    self.isDetecting = true
+                }
+            }
+        }
     }
     
     func setupCamera() {

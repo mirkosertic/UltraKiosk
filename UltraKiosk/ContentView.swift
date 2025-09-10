@@ -58,6 +58,9 @@ struct ContentView: View {
         .onReceive(settings.$screensaverTimeout) { newTimeout in
             kioskManager.updateTimeout(newTimeout)
         }
+        .onReceive(settings.$faceDetectionInterval) { newInterval in
+            faceDetectionManager.reinitialize(withInterval: newInterval)
+        }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
