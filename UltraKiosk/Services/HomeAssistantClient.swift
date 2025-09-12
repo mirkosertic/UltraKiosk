@@ -46,6 +46,8 @@ class HomeAssistantClient: ObservableObject {
         if !settings.accessToken.isEmpty && !settings.homeAssistantIP.isEmpty {
             AppLogger.homeAssistant.info("Reconnecting to Home Assistant WebSocket")
 
+            currentBinaryData = -1;
+            
             pipelineTimeoutTimer?.invalidate()
             pipelineTimeoutTimer = nil
 
@@ -326,13 +328,6 @@ class HomeAssistantClient: ObservableObject {
                     "Failed to parse message: \(error.localizedDescription)")
             }
         }
-
-        // TODO: Parse the following HA responses:
-        // Received message: {"id":10,"type":"result","success":true,"result":null}
-        // Received message: {"id":10,"type":"event","event":{"type":"run-start","data":////{"pipeline":"01hkwkxrt1qb7n37tpj8r6n7m8","language":"de","conversation_id":"01K3YGBJP1ZJ8R0ENZCFY6S1V1","runner_data":{"stt_binary_handler_id":1,"timeout":300},"tts_output":{"token":"q99-f7z1ro3L_8PgjE8rUw.mp3","url":"/api/tts_proxy/q99-f7z1ro3L_8PgjE8rUw.mp3","mime_type":"audio/mpeg","stream_response":false}},"timestamp":"2025-08-30T22:07:52.005147+00:00"}}
-        // Received message: {"id":10,"type":"event","event":{"type":"wake_word-start","data":{"entity_id":"wake_word.openwakeword","metadata":{"format":"wav","codec":"pcm","bit_rate":16,"sample_rate":16000,"channel":1},"timeout":3},"timestamp":"2025-08-30T22:07:52.005266+00:00"}}
-        // Received message: {"id":10,"type":"event","event":{"type":"error","data":{"code":"wake-word-timeout","message":"Wake word was not detected"},"timestamp":"2025-08-30T22:11:07.741333+00:00"}}
-        // Received message: {"id":10,"type":"event","event":{"type":"run-end","data":null,"timestamp":"2025-08-30T22:11:07.743620+00:00"}}
     }
 
     func sendAudioData(_ audioData: Data) {
