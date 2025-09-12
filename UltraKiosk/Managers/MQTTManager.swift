@@ -12,7 +12,7 @@ class MQTTManager: ObservableObject {
     private let settings = SettingsManager.shared
     private var batteryTimer: Timer?
     private var reconnectTimer: Timer?
-    
+
     // Track if discovery messages have been published in this session
     private var discoveryMessagesPublished = false
     private var isReconnecting = false
@@ -180,11 +180,11 @@ class MQTTManager: ObservableObject {
 
     // MARK: - Home Assistant Discovery
     private func publishDiscoveryMessages() {
-        guard isConnected, !discoveryMessagesPublished else { 
+        guard isConnected, !discoveryMessagesPublished else {
             AppLogger.mqtt.debug("Skipping discovery messages - already published or not connected")
-            return 
+            return
         }
-        
+
         AppLogger.mqtt.info("Publishing discovery messages for device: \(self.deviceSerializedId)")
 
         // Battery Sensor Discovery
@@ -198,13 +198,13 @@ class MQTTManager: ObservableObject {
 
         // App Info Sensor Discovery
         publishAppInfoSensorDiscovery()
-        
+
         // Settings Discovery
         publishSettingsDiscovery()
-        
+
         // Mark discovery messages as published
         discoveryMessagesPublished = true
-        
+
         AppLogger.mqtt.info("Discovery messages published successfully")
     }
 
@@ -212,7 +212,7 @@ class MQTTManager: ObservableObject {
         let topic = "\(settings.mqttTopicPrefix)/sensor/\(deviceSerializedId)/battery/config"
 
         let config: [String: Any] = [
-            "name": "\(deviceName) Battery",
+            "name": "Battery",
             "unique_id": "\(deviceSerializedId)_battery",
             "device_class": "battery",
             "unit_of_measurement": "%",
@@ -229,7 +229,7 @@ class MQTTManager: ObservableObject {
         let topic = "\(settings.mqttTopicPrefix)/button/\(deviceSerializedId)/screensaver/config"
 
         let config: [String: Any] = [
-            "name": "\(deviceName) Screensaver",
+            "name": "Screensaver",
             "unique_id": "\(deviceSerializedId)_screensaver_button",
             "command_topic":
                 "\(settings.mqttTopicPrefix)/button/\(deviceSerializedId)/screensaver/set",
@@ -244,7 +244,7 @@ class MQTTManager: ObservableObject {
         let topic = "\(settings.mqttTopicPrefix)/binary_sensor/\(deviceSerializedId)/status/config"
 
         let config: [String: Any] = [
-            "name": "\(deviceName) Status",
+            "name": "Status",
             "unique_id": "\(deviceSerializedId)_status",
             "device_class": "connectivity",
             "state_topic": "\(settings.mqttTopicPrefix)/binary_sensor/\(deviceSerializedId)/status",
@@ -260,7 +260,7 @@ class MQTTManager: ObservableObject {
         let topic = "\(settings.mqttTopicPrefix)/sensor/\(deviceSerializedId)/app_info/config"
 
         let config: [String: Any] = [
-            "name": "\(deviceName) App Info",
+            "name": "App Info",
             "unique_id": "\(deviceSerializedId)_app_info",
             "state_topic":
                 "\(settings.mqttTopicPrefix)/sensor/\(deviceSerializedId)/app_info/state",
@@ -586,12 +586,14 @@ extension MQTTManager {
         publishSelectDiscovery(
             key: "voiceSampleRate",
             name: "Voice Sample Rate",
-            options: ["8000","12000","16000","22050","32000","44100"],
+            options: ["8000", "12000", "16000", "22050", "32000", "44100"],
             icon: "mdi:waveform"
         )
     }
 
-    private func componentTopics(component: String, key: String) -> (config: String, state: String, command: String) {
+    private func componentTopics(component: String, key: String) -> (
+        config: String, state: String, command: String
+    ) {
         let basePath = "\(settingsBaseTopic)/\(component)/\(deviceSerializedId)/\(key)"
         return (
             config: "\(basePath)/config",
@@ -600,10 +602,13 @@ extension MQTTManager {
         )
     }
 
-    private func publishNumberDiscovery(key: String, name: String, min: Double, max: Double, step: Double, unit: String?, icon: String?) {
+    private func publishNumberDiscovery(
+        key: String, name: String, min: Double, max: Double, step: Double, unit: String?,
+        icon: String?
+    ) {
         let topics = componentTopics(component: "number", key: key)
         var config: [String: Any] = [
-            "name": "\(deviceName) \(name)",
+            "name": "\(name)",
             "unique_id": "\(deviceSerializedId)_\(key)",
             "device": deviceInfo,
             "state_topic": topics.state,
@@ -617,10 +622,11 @@ extension MQTTManager {
         publishJSON(topic: topics.config, payload: config, retain: true)
     }
 
-    private func publishSelectDiscovery(key: String, name: String, options: [String], icon: String?) {
+    private func publishSelectDiscovery(key: String, name: String, options: [String], icon: String?)
+    {
         let topics = componentTopics(component: "select", key: key)
         var config: [String: Any] = [
-            "name": "\(deviceName) \(name)",
+            "name": "\(name)",
             "unique_id": "\(deviceSerializedId)_\(key)",
             "device": deviceInfo,
             "state_topic": topics.state,
@@ -659,13 +665,15 @@ extension MQTTManager {
 
     private func publishAllSettingsStates() {
         // number states
-        publishNumberState(key: "mqttBatteryUpdateInterval", value: settings.mqttBatteryUpdateInterval)
+        publishNumberState(
+            key: "mqttBatteryUpdateInterval", value: settings.mqttBatteryUpdateInterval)
         publishNumberState(key: "screensaverTimeout", value: settings.screensaverTimeout)
         publishNumberState(key: "screenBrightnessDimmed", value: settings.screenBrightnessDimmed)
         publishNumberState(key: "screenBrightnessNormal", value: settings.screenBrightnessNormal)
         publishNumberState(key: "faceDetectionInterval", value: settings.faceDetectionInterval)
         publishNumberState(key: "voiceTimeout", value: Double(settings.voiceTimeout))
-        publishNumberState(key: "voiceNoiseSuppressionLevel", value: Double(settings.voiceNoiseSuppressionLevel))
+        publishNumberState(
+            key: "voiceNoiseSuppressionLevel", value: Double(settings.voiceNoiseSuppressionLevel))
         publishNumberState(key: "voiceAutoGainDbfs", value: Double(settings.voiceAutoGainDbfs))
         publishNumberState(key: "voiceVolumeMultiplier", value: settings.voiceVolumeMultiplier)
 
@@ -697,15 +705,52 @@ extension MQTTManager {
 
         let doublePayload = Double(payload)
 
-        if matches("number", "mqttBatteryUpdateInterval"), let v = doublePayload { settings.mqttBatteryUpdateInterval = v; publishNumberState(key: "mqttBatteryUpdateInterval", value: v); scheduleBatteryTimer(); return }
-        if matches("number", "screensaverTimeout"), let v = doublePayload { settings.screensaverTimeout = v; publishNumberState(key: "screensaverTimeout", value: v); return }
-        if matches("number", "screenBrightnessDimmed"), let v = doublePayload { settings.screenBrightnessDimmed = v; publishNumberState(key: "screenBrightnessDimmed", value: v); return }
-        if matches("number", "screenBrightnessNormal"), let v = doublePayload { settings.screenBrightnessNormal = v; publishNumberState(key: "screenBrightnessNormal", value: v); return }
-        if matches("number", "faceDetectionInterval"), let v = doublePayload { settings.faceDetectionInterval = v; publishNumberState(key: "faceDetectionInterval", value: v); return }
-        if matches("number", "voiceTimeout"), let v = Int(payload) { settings.voiceTimeout = v; publishNumberState(key: "voiceTimeout", value: Double(v)); return }
-        if matches("number", "voiceNoiseSuppressionLevel"), let v = Int(payload) { settings.voiceNoiseSuppressionLevel = v; publishNumberState(key: "voiceNoiseSuppressionLevel", value: Double(v)); return }
-        if matches("number", "voiceAutoGainDbfs"), let v = Int(payload) { settings.voiceAutoGainDbfs = v; publishNumberState(key: "voiceAutoGainDbfs", value: Double(v)); return }
-        if matches("number", "voiceVolumeMultiplier"), let v = doublePayload { settings.voiceVolumeMultiplier = v; publishNumberState(key: "voiceVolumeMultiplier", value: v); return }
+        if matches("number", "mqttBatteryUpdateInterval"), let v = doublePayload {
+            settings.mqttBatteryUpdateInterval = v
+            publishNumberState(key: "mqttBatteryUpdateInterval", value: v)
+            scheduleBatteryTimer()
+            return
+        }
+        if matches("number", "screensaverTimeout"), let v = doublePayload {
+            settings.screensaverTimeout = v
+            publishNumberState(key: "screensaverTimeout", value: v)
+            return
+        }
+        if matches("number", "screenBrightnessDimmed"), let v = doublePayload {
+            settings.screenBrightnessDimmed = v
+            publishNumberState(key: "screenBrightnessDimmed", value: v)
+            return
+        }
+        if matches("number", "screenBrightnessNormal"), let v = doublePayload {
+            settings.screenBrightnessNormal = v
+            publishNumberState(key: "screenBrightnessNormal", value: v)
+            return
+        }
+        if matches("number", "faceDetectionInterval"), let v = doublePayload {
+            settings.faceDetectionInterval = v
+            publishNumberState(key: "faceDetectionInterval", value: v)
+            return
+        }
+        if matches("number", "voiceTimeout"), let v = Int(payload) {
+            settings.voiceTimeout = v
+            publishNumberState(key: "voiceTimeout", value: Double(v))
+            return
+        }
+        if matches("number", "voiceNoiseSuppressionLevel"), let v = Int(payload) {
+            settings.voiceNoiseSuppressionLevel = v
+            publishNumberState(key: "voiceNoiseSuppressionLevel", value: Double(v))
+            return
+        }
+        if matches("number", "voiceAutoGainDbfs"), let v = Int(payload) {
+            settings.voiceAutoGainDbfs = v
+            publishNumberState(key: "voiceAutoGainDbfs", value: Double(v))
+            return
+        }
+        if matches("number", "voiceVolumeMultiplier"), let v = doublePayload {
+            settings.voiceVolumeMultiplier = v
+            publishNumberState(key: "voiceVolumeMultiplier", value: v)
+            return
+        }
 
         // select handlers
         if matches("select", "voiceSampleRate"), let v = Int(payload) {
@@ -725,7 +770,10 @@ extension MQTTManager {
             object: nil,
             queue: .main
         ) { _ in
-            if self.isConnected { self.publishAllSettingsStates(); self.scheduleBatteryTimer() }
+            if self.isConnected {
+                self.publishAllSettingsStates()
+                self.scheduleBatteryTimer()
+            }
         }
     }
 }
