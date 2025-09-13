@@ -56,7 +56,7 @@ class HomeAssistantClient: ObservableObject {
 
         } else {
             updateConnectionStatus("Configuration incomplete")
-            AppLogger.homeAssistant.warning("Connection incomplete")
+            AppLogger.homeAssistant.warning("Configuration incomplete")
             return
         }
     }
@@ -64,7 +64,15 @@ class HomeAssistantClient: ObservableObject {
     private func setupWebSocket() {
         AppLogger.homeAssistant.info("Connecting to homeassistant")
         
-        let url = URL(string: "\(baseURL)/api/websocket")
+        guard !settings.accessToken.isEmpty,
+            !settings.homeAssistantIP.isEmpty,
+            let url = URL(string: "\(baseURL)/api/websocket")
+        else {
+            updateConnectionStatus("Configuration incomplete")
+            AppLogger.homeAssistant.warning("Configuration incomplete")
+            return
+        }
+
         session = URLSession(configuration: .default)
         webSocketTask = session?.webSocketTask(with: url)
 
