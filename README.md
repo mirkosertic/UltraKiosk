@@ -5,7 +5,7 @@
 UltraKiosk is a lightweight iOS app that displays Home Assistant in full‑screen kiosk mode. It can also act as a voice satellite. A common use case is a wall‑mounted iPad as a smart display.
 
 ## Features
-- Full‑screen display of Home Assistant dashboards (works best with HACS "Kioskmode")
+- Full‑screen kiosk-mode display of Home Assistant dashboards (works best with HACS "Kioskmode")
 - Screensaver after inactivity
 - Wake the display via face detection using the device camera
 - Always‑on voice satellite for Home Assistant Voice Pipeline
@@ -43,15 +43,41 @@ Example Kiosk URL:
 http://homeassistant.local:8123/anzeige-flur/0?kiosk=true
 ```
 
-## Configuration
-Depending on your setup, you may need:
-
-- **Kiosk URL**: The Home Assistant dashboard to display in full screen.
-- **Home Assistant WebSocket** (optional, if used):
-  - `baseURL`: e.g., `ws://homeassistant.local:8123`
-  - `accessToken`: a Long‑Lived Access Token from Home Assistant
-
 Note: Do not commit secrets (tokens, passwords) to the README or source code. Use secure storage (e.g., Keychain) or environment/config files excluded from version control.
+
+## Configuration
+Configuration data is available by tapping three times in the top right corner of the screen. You should also see a small semi-transparent circle there. A configuration dialog will appear, offering the following configuration sections:
+
+### Home Assistant
+- IP/Name
+- Port
+- Use HTTPS
+- Access Token
+
+### MQTT Integration
+- Broker IP/Name
+- Port
+- Use TLS/SSL
+- Username (optional)
+- Password (optional)
+- Topic Prefix
+- Batterie Update Interval
+
+### ScreenSaver
+- Inactivity timeout
+- Screen brightness (dimmed)
+- Screen brightness (normal)
+- Face detection interval
+
+### Voice Assistant
+- Enable voice activation
+- Timeout
+- Noise suppression level
+- Auto gain (dBFS)
+- Volume multiplier
+
+### Kiosk mode
+- Kiosk URL (optional)
 
 ## Privacy & Permissions
 - **Camera**: Used for face detection to wake the display.

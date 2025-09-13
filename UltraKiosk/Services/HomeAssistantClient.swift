@@ -158,7 +158,7 @@ class HomeAssistantClient: ObservableObject {
         let startPipelineMessage: [String: Any] = [
             "id": processId,
             "type": "assist_pipeline/run",
-            "start_stage": "wake_words",
+            "start_stage": "wake_word",
             "end_stage": "tts",
             "input": [
                 "sample_rate": settings.voiceSampleRate,

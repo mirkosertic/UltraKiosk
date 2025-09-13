@@ -227,7 +227,7 @@ struct SettingsView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(String(format: "Detection interval: %.1fs", settings.faceDetectionInterval))
+                Text(String(format: "Face detection interval: %.1fs", settings.faceDetectionInterval))
                 Slider(value: $settings.faceDetectionInterval, in: 0.1...5.0, step: 0.1) {
                     Text("Interval")
                 } minimumValueLabel: {
