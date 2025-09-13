@@ -20,7 +20,7 @@ class HomeAssistantClient: ObservableObject {
     init() {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
-            self.setupWebSocket()
+            self.reconnectIfNeeded()
         }
 
         // Listen for settings changes
@@ -53,21 +53,18 @@ class HomeAssistantClient: ObservableObject {
 
             webSocketTask?.cancel()
             setupWebSocket()
+
+        } else {
+            updateConnectionStatus("Configuration incomplete")
+            AppLogger.homeAssistant.warning("Connection incomplete")
+            return
         }
     }
 
     private func setupWebSocket() {
         AppLogger.homeAssistant.info("Connecting to homeassistant")
         
-        guard !settings.accessToken.isEmpty,
-            !settings.homeAssistantIP.isEmpty,
-            let url = URL(string: "\(baseURL)/api/websocket")
-        else {
-            updateConnectionStatus("Configuration incomplete")
-            AppLogger.homeAssistant.warning("Connection incomplete")
-            return
-        }
-
+        let url = URL(string: "\(baseURL)/api/websocket")
         session = URLSession(configuration: .default)
         webSocketTask = session?.webSocketTask(with: url)
 
@@ -91,9 +88,7 @@ class HomeAssistantClient: ObservableObject {
         receiveMessage()
 
         // Send authentication after connection
-        //DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            self.authenticateWithHomeAssistant()
-        //}
+        self.authenticateWithHomeAssistant()
     }
 
     private func authenticateWithHomeAssistant() {
@@ -145,7 +140,7 @@ class HomeAssistantClient: ObservableObject {
 
                 // Attempt reconnection
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                    self?.connectWebSocket()
+                    self?.reconnectIfNeeded();
                 }
             }
         }
@@ -154,6 +149,7 @@ class HomeAssistantClient: ObservableObject {
     private func startNewPipeline() {
         // We are authenticated, so we start a new pipeline
         processId += 1
+        currentBinaryData = -1
 
         let startPipelineMessage: [String: Any] = [
             "id": processId,
@@ -163,7 +159,6 @@ class HomeAssistantClient: ObservableObject {
             "input": [
                 "sample_rate": settings.voiceSampleRate,
                 "device_id": MQTTManager.computeDeviceSerializedId(),
-                //"device_id": "unknown",
                 "timeout": settings.voiceTimeout,
                 "noise_suppression_level": settings.voiceNoiseSuppressionLevel,
                 "auto_gain_dbfs": settings.voiceAutoGainDbfs,
@@ -171,8 +166,6 @@ class HomeAssistantClient: ObservableObject {
 
             ],
         ]
-
-        currentBinaryData = -1
 
         AppLogger.homeAssistant.info("Starting new voice pipeline")
         sendMessage(startPipelineMessage)
@@ -204,6 +197,7 @@ class HomeAssistantClient: ObservableObject {
 
                 if json?["type"] as? String == "event" {
 
+                    // TODO: Do we need this check here?
                     //let id = json?["id"] as? Int ?? -1
                     //if id != processId {
                     //    AppLogger.homeAssistant.notice(
