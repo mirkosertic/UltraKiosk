@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8057283C2EB8C744003C0691 /* Porcupine in Frameworks */ = {isa = PBXBuildFile; productRef = 8057283B2EB8C744003C0691 /* Porcupine */; };
 		80A5915D2E66C9DC004BBBE0 /* CocoaMQTT in Frameworks */ = {isa = PBXBuildFile; productRef = 80A5915C2E66C9DC004BBBE0 /* CocoaMQTT */; };
 		80A5915F2E66C9DC004BBBE0 /* CocoaMQTTWebSocket in Frameworks */ = {isa = PBXBuildFile; productRef = 80A5915E2E66C9DC004BBBE0 /* CocoaMQTTWebSocket */; };
 		80A591682E66D511004BBBE0 /* Starscream in Frameworks */ = {isa = PBXBuildFile; productRef = 80A591672E66D511004BBBE0 /* Starscream */; };
@@ -44,6 +45,7 @@
 			files = (
 				80A5915F2E66C9DC004BBBE0 /* CocoaMQTTWebSocket in Frameworks */,
 				80A5915D2E66C9DC004BBBE0 /* CocoaMQTT in Frameworks */,
+				8057283C2EB8C744003C0691 /* Porcupine in Frameworks */,
 				80A591682E66D511004BBBE0 /* Starscream in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -90,6 +92,7 @@
 				80A5915C2E66C9DC004BBBE0 /* CocoaMQTT */,
 				80A5915E2E66C9DC004BBBE0 /* CocoaMQTTWebSocket */,
 				80A591672E66D511004BBBE0 /* Starscream */,
+				8057283B2EB8C744003C0691 /* Porcupine */,
 			);
 			productName = UltraKiosk;
 			productReference = 802DF9AF2E6391500079EC75 /* UltraKiosk.app */;
@@ -103,7 +106,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1640;
-				LastUpgradeCheck = 1640;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					802DF9AE2E6391500079EC75 = {
 						CreatedOnToolsVersion = 16.4;
@@ -122,6 +125,7 @@
 			packageReferences = (
 				80A5915B2E66C9DC004BBBE0 /* XCRemoteSwiftPackageReference "CocoaMQTT" */,
 				80A591662E66D511004BBBE0 /* XCRemoteSwiftPackageReference "Starscream" */,
+				8057283A2EB8C744003C0691 /* XCRemoteSwiftPackageReference "porcupine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 802DF9B02E6391500079EC75 /* Products */;
@@ -214,6 +218,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -272,6 +277,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -294,16 +300,21 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				"IPHONEOS_DEPLOYMENT_TARGET[arch=*]" = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = de.mirkosertic.UltraKiosk;
+				PRODUCT_BUNDLE_IDENTIFIER = de.mirkosertic.UltraKiosk3;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 2;
 			};
 			name = Debug;
 		};
@@ -324,16 +335,21 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				"IPHONEOS_DEPLOYMENT_TARGET[arch=*]" = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = de.mirkosertic.UltraKiosk;
+				PRODUCT_BUNDLE_IDENTIFIER = de.mirkosertic.UltraKiosk3;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 2;
 			};
 			name = Release;
 		};
@@ -361,6 +377,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		8057283A2EB8C744003C0691 /* XCRemoteSwiftPackageReference "porcupine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Picovoice/porcupine.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.4;
+			};
+		};
 		80A5915B2E66C9DC004BBBE0 /* XCRemoteSwiftPackageReference "CocoaMQTT" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/emqx/CocoaMQTT.git";
@@ -380,6 +404,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		8057283B2EB8C744003C0691 /* Porcupine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8057283A2EB8C744003C0691 /* XCRemoteSwiftPackageReference "porcupine" */;
+			productName = Porcupine;
+		};
 		80A5915C2E66C9DC004BBBE0 /* CocoaMQTT */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 80A5915B2E66C9DC004BBBE0 /* XCRemoteSwiftPackageReference "CocoaMQTT" */;

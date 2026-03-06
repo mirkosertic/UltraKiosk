@@ -3,6 +3,7 @@ import SwiftUI
 struct ScreensaverView: View {
     @EnvironmentObject var kioskManager: KioskManager
     @EnvironmentObject var faceDetectionManager: FaceDetectionManager
+    @EnvironmentObject var settings: SettingsManager
     @State private var currentTime = Date()
     
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -30,11 +31,6 @@ struct ScreensaverView: View {
                     .padding(.top, 40)
                 }
             }
-            
-            // Camera preview (invisible for face detection)
-            CameraPreview(faceDetectionManager: faceDetectionManager)
-                .opacity(0.01) // Nearly invisible but functional
-                .allowsHitTesting(false)
         }
         .onReceive(timer) { input in
             currentTime = input

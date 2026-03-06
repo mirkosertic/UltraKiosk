@@ -49,7 +49,7 @@ class MQTTManager: ObservableObject {
     private var deviceInfo: [String: Any] {
         let deviceModel = UIDevice.current.model
         let systemVersion = UIDevice.current.systemVersion
-        let appVersion =
+        _ =
             Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
 
         // Get additional device info
@@ -566,21 +566,6 @@ extension MQTTManager {
             name: "Voice Timeout",
             min: 1, max: 60, step: 1, unit: "s", icon: "mdi:timer"
         )
-        publishNumberDiscovery(
-            key: "voiceNoiseSuppressionLevel",
-            name: "Noise Suppression Level",
-            min: 0, max: 3, step: 1, unit: nil, icon: "mdi:equalizer"
-        )
-        publishNumberDiscovery(
-            key: "voiceAutoGainDbfs",
-            name: "Auto Gain (dBFS)",
-            min: 0, max: 40, step: 1, unit: "dB", icon: "mdi:volume-equal"
-        )
-        publishNumberDiscovery(
-            key: "voiceVolumeMultiplier",
-            name: "Volume Multiplier",
-            min: 0.5, max: 3.0, step: 0.1, unit: "x", icon: "mdi:volume-high"
-        )
 
         // select entity for sample rate
         publishSelectDiscovery(
@@ -647,9 +632,6 @@ extension MQTTManager {
             "screenBrightnessNormal",
             "faceDetectionInterval",
             "voiceTimeout",
-            "voiceNoiseSuppressionLevel",
-            "voiceAutoGainDbfs",
-            "voiceVolumeMultiplier",
         ]
 
         for key in keysNumber {
@@ -672,10 +654,6 @@ extension MQTTManager {
         publishNumberState(key: "screenBrightnessNormal", value: settings.screenBrightnessNormal)
         publishNumberState(key: "faceDetectionInterval", value: settings.faceDetectionInterval)
         publishNumberState(key: "voiceTimeout", value: Double(settings.voiceTimeout))
-        publishNumberState(
-            key: "voiceNoiseSuppressionLevel", value: Double(settings.voiceNoiseSuppressionLevel))
-        publishNumberState(key: "voiceAutoGainDbfs", value: Double(settings.voiceAutoGainDbfs))
-        publishNumberState(key: "voiceVolumeMultiplier", value: settings.voiceVolumeMultiplier)
 
         // select state
         publishSelectState(key: "voiceSampleRate", value: String(settings.voiceSampleRate))
@@ -734,21 +712,6 @@ extension MQTTManager {
         if matches("number", "voiceTimeout"), let v = Int(payload) {
             settings.voiceTimeout = v
             publishNumberState(key: "voiceTimeout", value: Double(v))
-            return
-        }
-        if matches("number", "voiceNoiseSuppressionLevel"), let v = Int(payload) {
-            settings.voiceNoiseSuppressionLevel = v
-            publishNumberState(key: "voiceNoiseSuppressionLevel", value: Double(v))
-            return
-        }
-        if matches("number", "voiceAutoGainDbfs"), let v = Int(payload) {
-            settings.voiceAutoGainDbfs = v
-            publishNumberState(key: "voiceAutoGainDbfs", value: Double(v))
-            return
-        }
-        if matches("number", "voiceVolumeMultiplier"), let v = doublePayload {
-            settings.voiceVolumeMultiplier = v
-            publishNumberState(key: "voiceVolumeMultiplier", value: v)
             return
         }
 

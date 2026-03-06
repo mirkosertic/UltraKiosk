@@ -5,105 +5,45 @@ import Combine
 class SettingsManager: ObservableObject {
     static let shared = SettingsManager()
     
-    // MARK: - App Groups Container
-    private let appGroupID = "group.de.mirkosertic.UltraKiosk.settings"
+    // MARK: - User Defaults
+    // Use standard UserDefaults for this app
+    // Note: If you need to share settings with app extensions (widgets, etc.),
+    // configure an App Group in your project's Capabilities and use:
+    // UserDefaults(suiteName: "group.your.app.identifier")
     private var userDefaults: UserDefaults {
-        return UserDefaults(suiteName: appGroupID) ?? UserDefaults.standard
+        return UserDefaults.standard
     }
     
     // MARK: - Published Settings
-    @Published var homeAssistantIP: String = "homeassistant.local" {
-        didSet { save() }
-    }
+    @Published var homeAssistantIP: String = "homeassistant.local"
+    @Published var homeAssistantPort: String = "8123"
+    @Published var accessToken: String = ""
+    @Published var useHTTPS: Bool = false
     
-    @Published var homeAssistantPort: String = "8123" {
-        didSet { save() }
-    }
+    @Published var mqttBrokerIP: String = "homeassistant.local"
+    @Published var mqttPort: String = "1883"
+    @Published var mqttUsername: String = "homeassistant"
+    @Published var mqttPassword: String = ""
+    @Published var mqttUseTLS: Bool = false
+    @Published var mqttTopicPrefix: String = "homeassistant"
+    @Published var enableMQTT: Bool = true
+    @Published var mqttBatteryUpdateInterval: Double = 60.0 // seconds
     
-    @Published var accessToken: String = "" {
-        didSet { save() }
-    }
+    @Published var screensaverTimeout: Double = 60.0 // 1 minute default
+    @Published var screenBrightnessDimmed: Double = 0.2
+    @Published var screenBrightnessNormal: Double = 0.7 // Changed from 1.0 to more reasonable 70%
     
-    @Published var useHTTPS: Bool = false {
-        didSet { save() }
-    }
-    
-    @Published var mqttBrokerIP: String = "homeassistant.local" {
-        didSet { save() }
-    }
-    
-    @Published var mqttPort: String = "1883" {
-        didSet { save() }
-    }
-    
-    @Published var mqttUsername: String = "homeassistant" {
-        didSet { save() }
-    }
-    
-    @Published var mqttPassword: String = "" {
-        didSet { save() }
-    }
-    
-    @Published var mqttUseTLS: Bool = false {
-        didSet { save() }
-    }
-    
-    @Published var mqttTopicPrefix: String = "homeassistant" {
-        didSet { save() }
-    }
-    
-    @Published var enableMQTT: Bool = true {
-        didSet { save() }
-    }
-    
-    @Published var mqttBatteryUpdateInterval: Double = 60.0 { // seconds
-        didSet { save() }
-    }
-    
-    @Published var screensaverTimeout: Double = 60.0 { // 1 minutes default
-        didSet { save() }
-    }
-    
-    @Published var screenBrightnessDimmed: Double = 0.2 {
-        didSet { save() }
-    }
-    
-    @Published var screenBrightnessNormal: Double = 1.0 {
-        didSet { save() }
-    }
-    
-    @Published var enableVoiceActivation: Bool = false {
-        didSet { save() }
-    }
-    
-    @Published var kioskURL: String = "" {
-        didSet { save() }
-    }
-    
-    @Published var faceDetectionInterval: Double = 1.0 { // seconds between detections
-        didSet { save() }
-    }
+    @Published var enableVoiceActivation: Bool = true
+    @Published var kioskURL: String = "http://homeassistant.local:8123/anzeige-flur/0?kiosk"
+    @Published var faceDetectionInterval: Double = 1.0 // seconds between detections
     
     // Voice pipeline settings
-    @Published var voiceSampleRate: Int = 16000 {
-        didSet { save() }
-    }
-    
-    @Published var voiceTimeout: Int = 10 {
-        didSet { save() }
-    }
-    
-    @Published var voiceNoiseSuppressionLevel: Int = 2 {
-        didSet { save() }
-    }
-    
-    @Published var voiceAutoGainDbfs: Int = 20 {
-        didSet { save() }
-    }
-    
-    @Published var voiceVolumeMultiplier: Double = 1.5 {
-        didSet { save() }
-    }
+    @Published var voiceSampleRate: Int = 16000
+    @Published var voiceTimeout: Int = 2
+    @Published var porcupineAccessToken: String = ""
+    @Published var voiceLanguage: String = "de"
+    @Published var homeAssistantConversationAgent: String = "conversation.claude_conversation"
+    @Published var homeAssistantConversationId: String = "ipad"
     
     // MARK: - UserDefaults Keys
     private enum Keys {
@@ -125,12 +65,12 @@ class SettingsManager: ObservableObject {
         static let enableVoiceActivation = "enableVoiceActivation"
         static let kioskURL = "kioskURL"
         static let faceDetectionInterval = "faceDetectionInterval"
-        // Voice pipeline keys
         static let voiceSampleRate = "voiceSampleRate"
         static let voiceTimeout = "voiceTimeout"
-        static let voiceNoiseSuppressionLevel = "voiceNoiseSuppressionLevel"
-        static let voiceAutoGainDbfs = "voiceAutoGainDbfs"
-        static let voiceVolumeMultiplier = "voiceVolumeMultiplier"
+        static let porcupineAccessToken = "porcupineAccessToken"
+        static let voiceLanguage = "voiceLanguage"
+        static let homeAssistantConversationAgent = "homeAssistantConversationAgent"
+        static let homeAssistantConversationId = "homeAssistantConversationId"
     }
     
     private init() {
@@ -175,49 +115,105 @@ class SettingsManager: ObservableObject {
         homeAssistantIP = defaults.string(forKey: Keys.homeAssistantIP) ?? "homeassistant.local"
         homeAssistantPort = defaults.string(forKey: Keys.homeAssistantPort) ?? "8123"
         accessToken = defaults.string(forKey: Keys.accessToken) ?? ""
-        useHTTPS = defaults.bool(forKey: Keys.useHTTPS)
+        
+        // Load boolean with proper default handling
+        if defaults.object(forKey: Keys.useHTTPS) != nil {
+            useHTTPS = defaults.bool(forKey: Keys.useHTTPS)
+        } else {
+            useHTTPS = false // Default value
+        }
         
         // MQTT Settings
-        mqttBrokerIP = defaults.string(forKey: Keys.mqttBrokerIP) ?? "192.168.1.100"
+        mqttBrokerIP = defaults.string(forKey: Keys.mqttBrokerIP) ?? "homeassistant.local"
         mqttPort = defaults.string(forKey: Keys.mqttPort) ?? "1883"
         mqttUsername = defaults.string(forKey: Keys.mqttUsername) ?? "homeassistant"
         mqttPassword = defaults.string(forKey: Keys.mqttPassword) ?? ""
-        mqttUseTLS = defaults.bool(forKey: Keys.mqttUseTLS)
-        mqttTopicPrefix = defaults.string(forKey: Keys.mqttTopicPrefix) ?? "homeassistant"
-        enableMQTT = defaults.object(forKey: Keys.enableMQTT) != nil ? defaults.bool(forKey: Keys.enableMQTT) : true
-        mqttBatteryUpdateInterval = defaults.double(forKey: Keys.mqttBatteryUpdateInterval) != 0
-        ? defaults.double(forKey: Keys.mqttBatteryUpdateInterval) : 60.0
         
-        screensaverTimeout = defaults.double(forKey: Keys.screensaverTimeout) != 0
-        ? defaults.double(forKey: Keys.screensaverTimeout) : 60.0
-        screenBrightnessDimmed = defaults.double(forKey: Keys.screenBrightnessDimmed) != 0
-        ? defaults.double(forKey: Keys.screenBrightnessDimmed) : 0.2
-        screenBrightnessNormal = defaults.double(forKey: Keys.screenBrightnessNormal) != 0
-        ? defaults.double(forKey: Keys.screenBrightnessNormal) : 1.0
-        enableVoiceActivation = defaults.object(forKey: Keys.enableVoiceActivation) != nil
-        ? defaults.bool(forKey: Keys.enableVoiceActivation) : false
-        kioskURL = defaults.string(forKey: Keys.kioskURL) ?? "http://homeassistant.local:8123/anzeige-flur/0?kios=true"
-        faceDetectionInterval = defaults.double(forKey: Keys.faceDetectionInterval) != 0
-        ? defaults.double(forKey: Keys.faceDetectionInterval) : 1.0
+        // Load boolean with proper default handling
+        if defaults.object(forKey: Keys.mqttUseTLS) != nil {
+            mqttUseTLS = defaults.bool(forKey: Keys.mqttUseTLS)
+        } else {
+            mqttUseTLS = false // Default value
+        }
+        
+        mqttTopicPrefix = defaults.string(forKey: Keys.mqttTopicPrefix) ?? "homeassistant"
+        
+        // enableMQTT defaults to true
+        if defaults.object(forKey: Keys.enableMQTT) != nil {
+            enableMQTT = defaults.bool(forKey: Keys.enableMQTT)
+        } else {
+            enableMQTT = true // Default value
+        }
+        
+        // Load double values with proper zero handling
+        if let interval = defaults.object(forKey: Keys.mqttBatteryUpdateInterval) as? Double {
+            mqttBatteryUpdateInterval = interval
+        } else {
+            mqttBatteryUpdateInterval = 60.0
+        }
+        
+        if let timeout = defaults.object(forKey: Keys.screensaverTimeout) as? Double {
+            screensaverTimeout = timeout
+        } else {
+            screensaverTimeout = 60.0
+        }
+        
+        if let brightness = defaults.object(forKey: Keys.screenBrightnessDimmed) as? Double {
+            screenBrightnessDimmed = brightness
+        } else {
+            screenBrightnessDimmed = 0.2
+        }
+        
+        if let brightness = defaults.object(forKey: Keys.screenBrightnessNormal) as? Double {
+            screenBrightnessNormal = brightness
+        } else {
+            screenBrightnessNormal = 0.7 // Default to 70% instead of 100%
+        }
+        
+        // enableVoiceActivation defaults to true (matching property declaration)
+        if defaults.object(forKey: Keys.enableVoiceActivation) != nil {
+            enableVoiceActivation = defaults.bool(forKey: Keys.enableVoiceActivation)
+        } else {
+            enableVoiceActivation = true // Default value
+        }
+        
+        kioskURL = defaults.string(forKey: Keys.kioskURL) ?? "http://homeassistant.local:8123/anzeige-flur/0?kiosk"
+        
+        if let interval = defaults.object(forKey: Keys.faceDetectionInterval) as? Double {
+            faceDetectionInterval = interval
+        } else {
+            faceDetectionInterval = 1.0
+        }
         
         // Voice pipeline settings
-        let sr = defaults.integer(forKey: Keys.voiceSampleRate)
-        voiceSampleRate = sr != 0 ? sr : 16000
-        let to = defaults.integer(forKey: Keys.voiceTimeout)
-        voiceTimeout = to != 0 ? to : 10
-        let ns = defaults.integer(forKey: Keys.voiceNoiseSuppressionLevel)
-        voiceNoiseSuppressionLevel = ns != 0 ? ns : 2
-        // 0 could be a valid value for auto gain, so we check object existence
-        if defaults.object(forKey: Keys.voiceAutoGainDbfs) != nil {
-            voiceAutoGainDbfs = defaults.integer(forKey: Keys.voiceAutoGainDbfs)
+        if let sr = defaults.object(forKey: Keys.voiceSampleRate) as? Int {
+            voiceSampleRate = sr
         } else {
-            voiceAutoGainDbfs = 20
+            voiceSampleRate = 16000
         }
-        let vm = defaults.double(forKey: Keys.voiceVolumeMultiplier)
-        voiceVolumeMultiplier = vm != 0 ? vm : 1.5
+        
+        if let to = defaults.object(forKey: Keys.voiceTimeout) as? Int {
+            voiceTimeout = to
+        } else {
+            voiceTimeout = 2
+        }
+        
+        porcupineAccessToken = defaults
+            .string(forKey: Keys.porcupineAccessToken) ?? ""
+
+        voiceLanguage = defaults
+            .string(forKey: Keys.voiceLanguage) ?? "de"
+
+        homeAssistantConversationAgent = defaults
+            .string(forKey: Keys.homeAssistantConversationAgent) ?? "conversation.claude_conversation"
+
+        homeAssistantConversationId = defaults
+            .string(forKey: Keys.homeAssistantConversationId) ?? "ipad"
     }
     
-    private func save() {
+    // MARK: - Public Save Method
+    /// Saves all settings to UserDefaults. Call this explicitly when settings should be persisted.
+    func saveSettings() {
         let defaults = userDefaults
         
         defaults.set(homeAssistantIP, forKey: Keys.homeAssistantIP)
@@ -245,11 +241,10 @@ class SettingsManager: ObservableObject {
         // Voice pipeline settings
         defaults.set(voiceSampleRate, forKey: Keys.voiceSampleRate)
         defaults.set(voiceTimeout, forKey: Keys.voiceTimeout)
-        defaults.set(voiceNoiseSuppressionLevel, forKey: Keys.voiceNoiseSuppressionLevel)
-        defaults.set(voiceAutoGainDbfs, forKey: Keys.voiceAutoGainDbfs)
-        defaults.set(voiceVolumeMultiplier, forKey: Keys.voiceVolumeMultiplier)
-        
-        defaults.synchronize()
+        defaults.set(porcupineAccessToken, forKey: Keys.porcupineAccessToken)
+        defaults.set(homeAssistantConversationAgent, forKey: Keys.homeAssistantConversationAgent)
+        defaults.set(homeAssistantConversationId, forKey: Keys.homeAssistantConversationId)
+        defaults.set(voiceLanguage, forKey: Keys.voiceLanguage)
         
         // Notify observers that settings have changed
         NotificationCenter.default.post(name: .settingsChanged, object: nil)
@@ -320,12 +315,11 @@ class SettingsManager: ObservableObject {
             "enableVoiceActivation": enableVoiceActivation,
             "kioskURL": kioskURL,
             "faceDetectionInterval": faceDetectionInterval,
-            // Voice pipeline
             "voiceSampleRate": voiceSampleRate,
             "voiceTimeout": voiceTimeout,
-            "voiceNoiseSuppressionLevel": voiceNoiseSuppressionLevel,
-            "voiceAutoGainDbfs": voiceAutoGainDbfs,
-            "voiceVolumeMultiplier": voiceVolumeMultiplier,
+            "homeAssistantConversationAgent": homeAssistantConversationAgent,
+            "homeAssistantConversationId": homeAssistantConversationId,
+            "voiceLanguage": voiceLanguage
         ]
     }
     
@@ -349,13 +343,13 @@ class SettingsManager: ObservableObject {
         enableVoiceActivation = settings["enableVoiceActivation"] as? Bool ?? enableVoiceActivation
         kioskURL = settings["kioskURL"] as? String ?? kioskURL
         faceDetectionInterval = settings["faceDetectionInterval"] as? Double ?? faceDetectionInterval
-        
-        // Voice pipeline
+
+        homeAssistantConversationId = settings["homeAssistantConversationId"] as? String ?? homeAssistantConversationId
+        homeAssistantConversationAgent = settings["homeAssistantConversationAgent"] as? String ?? homeAssistantConversationAgent
+        voiceLanguage = settings["voiceLanguage"] as? String ?? voiceLanguage
+
         if let v = settings["voiceSampleRate"] as? Int { voiceSampleRate = v }
         if let v = settings["voiceTimeout"] as? Int { voiceTimeout = v }
-        if let v = settings["voiceNoiseSuppressionLevel"] as? Int { voiceNoiseSuppressionLevel = v }
-        if let v = settings["voiceAutoGainDbfs"] as? Int { voiceAutoGainDbfs = v }
-        if let v = settings["voiceVolumeMultiplier"] as? Double { voiceVolumeMultiplier = v }
     }
     
     // MARK: - Reset
@@ -376,16 +370,17 @@ class SettingsManager: ObservableObject {
         
         screensaverTimeout = 60.0
         screenBrightnessDimmed = 0.2
-        screenBrightnessNormal = 1.0
-        enableVoiceActivation = true
+        screenBrightnessNormal = 0.7
+        enableVoiceActivation = false
         kioskURL = ""
         faceDetectionInterval = 1.0
         
         // Voice pipeline defaults
         voiceSampleRate = 16000
-        voiceTimeout = 10
-        voiceNoiseSuppressionLevel = 2
-        voiceAutoGainDbfs = 20
-        voiceVolumeMultiplier = 1.5
+        voiceTimeout = 2
+        
+        voiceLanguage = "de"
+        homeAssistantConversationId = "ipad"
+        homeAssistantConversationAgent = "conversation.claude_conversation"
     }
 }

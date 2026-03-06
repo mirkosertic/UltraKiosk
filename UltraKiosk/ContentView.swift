@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var faceDetectionManager = FaceDetectionManager()
     @StateObject private var mqttManager = MQTTManager()
     @StateObject private var settings = SettingsManager.shared
+    @StateObject private var brightnessManager = BrightnessManager()
 
     @State private var showingSettings = false
 
@@ -20,6 +21,13 @@ struct ContentView: View {
                 .opacity(kioskManager.isScreensaverActive ? 0 : 1)
                 .animation(.easeInOut(duration: 0.5), value: kioskManager.isScreensaverActive)
                 .allowsHitTesting(!kioskManager.isScreensaverActive)
+
+            // Keep camera preview alive for face detection (invisible)
+            if settings.enableVoiceActivation {
+                CameraPreview(faceDetectionManager: faceDetectionManager)
+                    .opacity(0.001)
+                    .allowsHitTesting(false)
+            }
 
             // Screensaver overlay
             if kioskManager.isScreensaverActive {
@@ -50,6 +58,9 @@ struct ContentView: View {
             setupApp()
             setupNotifications()
         }
+        .onDisappear {
+            brightnessManager.restoreOriginalBrightness()
+        }
         .onReceive(faceDetectionManager.$faceDetected) { faceDetected in
             if faceDetected && kioskManager.isScreensaverActive {
                 kioskManager.exitScreensaver()
@@ -71,7 +82,8 @@ struct ContentView: View {
         // Prevent device from sleeping
         UIApplication.shared.isIdleTimerDisabled = true
 
-        UIScreen.main.brightness = 1.0
+        // Save original brightness and set to configured value
+        brightnessManager.saveAndSetBrightness()
 
         // Setup audio session for continuous recording
         audioManager.setupAudioSession()

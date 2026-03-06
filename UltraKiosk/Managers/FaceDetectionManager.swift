@@ -17,6 +17,32 @@ class FaceDetectionManager: NSObject, ObservableObject {
     private var detectionInterval: CFTimeInterval = SettingsManager.shared.faceDetectionInterval
     private var pendingPixelBuffer: CVPixelBuffer?
     
+    // Reusable Vision request for performance optimization
+    private lazy var faceDetectionRequest: VNDetectFaceRectanglesRequest = {
+        let request = VNDetectFaceRectanglesRequest { [weak self] request, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("Face detection error: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let results = request.results as? [VNFaceObservation] else { return }
+            
+            DispatchQueue.main.async {
+                let hasFaces = !results.isEmpty
+                if hasFaces != self.faceDetected {
+                    self.faceDetected = hasFaces
+                }
+            }
+        }
+        
+        // Use the latest revision for best performance
+        request.revision = VNDetectFaceRectanglesRequestRevision3
+        
+        return request
+    }()
+    
     override init() {
         super.init()
         setupCamera()
@@ -112,19 +138,14 @@ class FaceDetectionManager: NSObject, ObservableObject {
     }
     
     private func processFaceDetection(pixelBuffer: CVPixelBuffer) {
-        let request = VNDetectFaceRectanglesRequest { [weak self] request, error in
-            guard let results = request.results as? [VNFaceObservation] else { return }
-            
-            DispatchQueue.main.async {
-                let hasFaces = !results.isEmpty
-                if hasFaces != self?.faceDetected {
-                    self?.faceDetected = hasFaces
-                }
-            }
-        }
-        
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
-        try? handler.perform([request])
+        
+        do {
+            // Use the reusable request for better performance
+            try handler.perform([faceDetectionRequest])
+        } catch {
+            print("Failed to perform face detection: \(error.localizedDescription)")
+        }
     }
 }
 

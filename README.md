@@ -8,7 +8,8 @@ UltraKiosk is a lightweight iOS app that displays Home Assistant in full‑scree
 - Full‑screen kiosk-mode display of Home Assistant dashboards (works best with HACS "Kioskmode")
 - Screensaver after inactivity
 - Wake the display via face detection using the device camera
-- Always‑on voice satellite for Home Assistant Voice Pipeline
+- Wake-word detection via [Picovoice Porcupine](https://picovoice.ai/platform/porcupine/)
+- Voice satellite for the Home Assistant Voice Pipeline
 
 ## Screenshots
 
@@ -43,8 +44,6 @@ Example Kiosk URL:
 http://homeassistant.local:8123/anzeige-flur/0?kiosk=true
 ```
 
-Note: Do not commit secrets (tokens, passwords) to the README or source code. Use secure storage (e.g., Keychain) or environment/config files excluded from version control.
-
 ## Configuration
 Configuration data is available by tapping three times in the top right corner of the screen. You should also see a small semi-transparent circle there. A configuration dialog will appear, offering the following configuration sections:
 
@@ -55,13 +54,14 @@ Configuration data is available by tapping three times in the top right corner o
 - Access Token
 
 ### MQTT Integration
+- Enable MQTT
 - Broker IP/Name
 - Port
 - Use TLS/SSL
 - Username (optional)
 - Password (optional)
 - Topic Prefix
-- Batterie Update Interval
+- Battery Update Interval
 
 ### ScreenSaver
 - Inactivity timeout
@@ -69,12 +69,11 @@ Configuration data is available by tapping three times in the top right corner o
 - Screen brightness (normal)
 - Face detection interval
 
-### Voice Assistant
+### Voice Control
 - Enable voice activation
+- Sample rate
 - Timeout
-- Noise suppression level
-- Auto gain (dBFS)
-- Volume multiplier
+- Porcupine Access Token (from [Picovoice Console](https://console.picovoice.ai/))
 
 ### Kiosk mode
 - Kiosk URL (optional)
@@ -90,9 +89,5 @@ Contributions are welcome! Please:
 - Submit pull requests with clear descriptions and small, reviewable changes.
 
 ## License
-This project is open source. See `LICENSE` (if present) or repository notes for details.
-
-## Roadmap
-- Kiosk refinements and stability improvements
-- Extended in‑app settings
+MIT License. See `LICENSE` for details.
  

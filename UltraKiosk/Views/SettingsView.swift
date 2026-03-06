@@ -26,15 +26,17 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
+                        // Reload settings to discard changes
+                        settings.objectWillChange.send()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                    Button("Save") {
                         saveAndClose()
                     }
-                    //.fontWeight(.semibold)
+                    .fontWeight(.semibold)
                 }
             }
             .alert("Validation error", isPresented: $showingValidationAlert) {
@@ -120,7 +122,7 @@ struct SettingsView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Batterie Update Interval: \(settings.batteryUpdateIntervalFormatted)")
+                    Text("Battery Update Interval: \(settings.batteryUpdateIntervalFormatted)")
                     Slider(value: $settings.mqttBatteryUpdateInterval, in: 30...600, step: 30) {
                         Text("Interval")
                     } minimumValueLabel: {
@@ -262,25 +264,13 @@ struct SettingsView: View {
                 ), in: 1...60, step: 1)
             }
             
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Noise suppression level: \(settings.voiceNoiseSuppressionLevel)")
-                Slider(value: Binding(
-                    get: { Double(settings.voiceNoiseSuppressionLevel) },
-                    set: { settings.voiceNoiseSuppressionLevel = Int($0) }
-                ), in: 0...3, step: 1)
-            }
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Auto gain (dBFS): \(settings.voiceAutoGainDbfs)")
-                Slider(value: Binding(
-                    get: { Double(settings.voiceAutoGainDbfs) },
-                    set: { settings.voiceAutoGainDbfs = Int($0) }
-                ), in: 0...40, step: 1)
-            }
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text(String(format: "Volume multiplier: %.2f×", settings.voiceVolumeMultiplier))
-                Slider(value: $settings.voiceVolumeMultiplier, in: 0.5...3.0, step: 0.1)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Porcupine Access Token")
+                SecureField("Long-lived Access Token", text: $settings.porcupineAccessToken)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                Text("Create a Long-lived Access Token the Picovoice web console")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         }
     }
@@ -318,6 +308,7 @@ struct SettingsView: View {
         validationIssues = settings.validateSettings()
         
         if validationIssues.isEmpty {
+            settings.saveSettings() // Save settings explicitly
             presentationMode.wrappedValue.dismiss()
         } else {
             showingValidationAlert = true

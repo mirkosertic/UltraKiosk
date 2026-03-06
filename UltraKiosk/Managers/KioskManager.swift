@@ -6,6 +6,7 @@ class KioskManager: ObservableObject {
     @Published var inactivityTimer: Timer?
     
     private let settings = SettingsManager.shared
+    private let brightnessManager = BrightnessManager()
     private var inactivityTimeout: TimeInterval = 60.0 // 30 seconds for demo
     private var cancellables = Set<AnyCancellable>()
     
@@ -41,10 +42,8 @@ class KioskManager: ObservableObject {
             isScreensaverActive = true
         }
         
-        // Dim screen
-        DispatchQueue.main.async {
-            UIScreen.main.brightness = CGFloat(self.settings.screenBrightnessDimmed)
-        }
+        // Dim screen using brightness manager
+        brightnessManager.dimScreen()
     }
     
     func exitScreensaver() {
@@ -52,10 +51,8 @@ class KioskManager: ObservableObject {
             isScreensaverActive = false
         }
         
-        // Restore screen brightness
-        DispatchQueue.main.async {
-            UIScreen.main.brightness = CGFloat(self.settings.screenBrightnessNormal)
-        }
+        // Restore screen brightness using brightness manager
+        brightnessManager.setNormalBrightness()
         
         resetInactivityTimer()
     }
