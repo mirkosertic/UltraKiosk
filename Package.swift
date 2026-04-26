@@ -17,7 +17,7 @@ let package = Package(
         // MQTT client
         .package(url: "https://github.com/emqx/CocoaMQTT.git", from: "2.1.7"),
         // Wake-word detection (Picovoice Porcupine)
-        .package(url: "https://github.com/Picovoice/porcupine.git", from: "3.0.4"),
+        .package(url: "https://github.com/Picovoice/porcupine.git", from: "4.0.0"),
         // WebSocket transport (used by CocoaMQTT)
         .package(url: "https://github.com/daltoniam/Starscream.git", from: "4.0.6"),
     ],
