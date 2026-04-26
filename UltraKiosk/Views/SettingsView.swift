@@ -277,16 +277,17 @@ struct SettingsView: View {
     
     private var kioskSection: some View {
         Section("Kiosk mode") {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Kiosk URL (optional)")
-                TextField("https://your-dashboard.com", text: $settings.kioskURL)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .keyboardType(.URL)
-                    .autocapitalization(.none)
-                Text("Leave empty for demo page")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            NavigationLink("Manage URLs (\(settings.slideshowURLs.count))") {
+                URLListEditor(
+                    committedURLs: $settings.slideshowURLs,
+                    committedInterval: $settings.slideshowInterval
+                )
             }
+            Text(settings.slideshowURLs.isEmpty
+                 ? "No URLs configured — demo page is shown"
+                 : "\(settings.effectiveURLs.count) URL(s) · \(Int(settings.slideshowInterval)) s interval")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
     
@@ -410,8 +411,101 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - URL List Editor
+
+private let maxURLCount = 5
+
+/// Allows the user to add, remove, reorder, and edit slideshow URLs,
+/// and to configure the transition interval when more than one URL is set.
+/// Operates on a local copy; changes are committed only on Save.
+struct URLListEditor: View {
+
+    /// The committed values from SettingsManager — only written on Save.
+    @Binding var committedURLs: [String]
+    @Binding var committedInterval: Double
+
+    /// Local working copies — discarded on Cancel.
+    @State private var urls: [String]
+    @State private var interval: Double
+
+    @Environment(\.dismiss) private var dismiss
+
+    init(committedURLs: Binding<[String]>, committedInterval: Binding<Double>) {
+        _committedURLs = committedURLs
+        _committedInterval = committedInterval
+        _urls = State(initialValue: committedURLs.wrappedValue)
+        _interval = State(initialValue: committedInterval.wrappedValue)
+    }
+
+    var body: some View {
+        List {
+            Section("URLs") {
+                ForEach(Array(urls.enumerated()), id: \.offset) { i, _ in
+                    TextField("https://your-dashboard.local", text: $urls[i])
+                        .keyboardType(.URL)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                }
+                .onMove { from, to in urls.move(fromOffsets: from, toOffset: to) }
+                .onDelete { idx in urls.remove(atOffsets: idx) }
+
+                if urls.count < maxURLCount {
+                    Button {
+                        urls.append("")
+                    } label: {
+                        Label("Add URL", systemImage: "plus.circle")
+                    }
+                } else {
+                    Text("Maximum of \(maxURLCount) URLs reached")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if urls.count > 1 {
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Transition interval: \(Int(interval)) s")
+                        Slider(value: $interval, in: 5...300, step: 5) {
+                            Text("Interval")
+                        } minimumValueLabel: {
+                            Text("5 s")
+                        } maximumValueLabel: {
+                            Text("5 min")
+                        }
+                    }
+                } header: {
+                    Text("Slideshow")
+                } footer: {
+                    Text("Time each slide is shown before cross-fading to the next.")
+                }
+            }
+        }
+        .navigationTitle("Slideshow URLs")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Cancel") { dismiss() }
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                EditButton()
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    committedURLs = urls
+                    committedInterval = interval
+                    dismiss()
+                }
+                .fontWeight(.semibold)
+            }
+        }
+    }
+}
+
 // MARK: - Notification Extension
 extension Notification.Name {
     static let settingsChanged = Notification.Name("SettingsChanged")
     static let openSettings = Notification.Name("OpenSettings")
+    /// Posted after settings are saved and the WKWebView cache has been cleared.
+    /// Every KioskWebView reloads its content when it receives this notification.
+    static let reloadAllWebViews = Notification.Name("UltraKiosk.reloadAllWebViews")
 }

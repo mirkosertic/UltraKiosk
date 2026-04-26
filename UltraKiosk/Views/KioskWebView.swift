@@ -2,60 +2,67 @@ import SwiftUI
 import WebKit
 
 struct KioskWebView: UIViewRepresentable {
+
+    let url: String?   // nil → load demo HTML
     @EnvironmentObject var kioskManager: KioskManager
-    @EnvironmentObject var settings: SettingsManager
+
     @StateObject private var webViewHandler = WebViewHandler()
-    
+
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        // WKWebsiteDataStore.default() is shared across all WKWebView instances by
+        // default, so persistent cookies (e.g. Home Assistant auth tokens) are
+        // automatically available to every slide without a separate WKProcessPool.
+        config.websiteDataStore = .default()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
-        
+
         // Add message handlers for JavaScript communication
         let userContentController = WKUserContentController()
         userContentController.add(context.coordinator, name: "openSettings")
         config.userContentController = userContentController
-        
+
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
-        
+
         // Store reference for JavaScript calls
         context.coordinator.webView = webView
         webViewHandler.webView = webView
-        
+
         // Add gesture recognizer for user activity
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
         webView.addGestureRecognizer(tapGesture)
-        
-        // Load demo HTML content
+
         loadContent(in: webView)
-        
+
         return webView
     }
-    
+
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        // Only reload if the URL has actually changed
-        let currentURL = settings.kioskURL.isEmpty ? "demo" : settings.kioskURL
-        let lastLoadedURL = uiView.url?.absoluteString ?? ""
-        if currentURL != lastLoadedURL {
+        // Keep coordinator in sync so its closures see the latest parent state
+        context.coordinator.parent = self
+
+        // Compare against the originally requested URL, not uiView.url, to avoid
+        // reload loops after HTTP redirects (e.g. HA login redirect chains).
+        let targetURL = url ?? ""
+        if targetURL != context.coordinator.requestedURL {
+            context.coordinator.requestedURL = targetURL
             loadContent(in: uiView)
         }
     }
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(self, webViewHandler: webViewHandler)
     }
-    
+
     private func loadContent(in webView: WKWebView) {
-        if !settings.kioskURL.isEmpty, let url = URL(string: settings.kioskURL) {
-            // Load custom kiosk URL
-            webView.load(URLRequest(url: url))
+        if let urlString = url, !urlString.isEmpty, let target = URL(string: urlString) {
+            webView.load(URLRequest(url: target))
         } else {
-            // Load demo content
             loadDemoContent(in: webView)
         }
     }
-    
+
     private func loadDemoContent(in webView: WKWebView) {
         let htmlContent = """
         <!DOCTYPE html>
@@ -170,14 +177,13 @@ struct KioskWebView: UIViewRepresentable {
                         justify-content: space-between;
                         max-width: 95%;
                     }
-                    
+
                     .app-title {
                         margin-bottom: 1rem;
                     }
-                    
+
                     .config-text {
                         margin-top: 1rem;
-                    }
                         font-size: 1rem;
                         padding: 1.5rem;
                     }
@@ -203,10 +209,10 @@ struct KioskWebView: UIViewRepresentable {
         </head>
         <body>
             <div class="bg-decoration"></div>
-            
+
             <div class="container">
                 <h1 class="app-title">UltraKiosk</h1>
-                                
+
                 <div class="config-text">
                     Welcome to UltraKiosk<br>
                     <span class="config-highlight">3 x Tap Settings</span> in the top corner to configure your kiosk experience.
@@ -217,11 +223,13 @@ struct KioskWebView: UIViewRepresentable {
         """
         webView.loadHTMLString(htmlContent, baseURL: nil)
     }
-    
-    // WebView Handler for JavaScript communication
+
+    // MARK: - WebView Handler
+
+    /// Holds a reference to the WKWebView for executing JavaScript from Swift.
     class WebViewHandler: ObservableObject {
         weak var webView: WKWebView?
-        
+
         func executeJavaScript(_ script: String) {
             webView?.evaluateJavaScript(script) { result, error in
                 if let error = error {
@@ -231,53 +239,74 @@ struct KioskWebView: UIViewRepresentable {
         }
     }
 
+    // MARK: - Coordinator
+
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var parent: KioskWebView
         var webViewHandler: WebViewHandler
         weak var webView: WKWebView?
-        
+
+        /// The URL that was most recently requested. Used in updateUIView to prevent
+        /// reload loops caused by HTTP redirects changing uiView.url after navigation.
+        var requestedURL: String = ""
+
         init(_ parent: KioskWebView, webViewHandler: WebViewHandler) {
             self.parent = parent
             self.webViewHandler = webViewHandler
+            super.init()
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handleReloadRequest),
+                name: .reloadAllWebViews,
+                object: nil
+            )
         }
-        
+
+        deinit {
+            NotificationCenter.default.removeObserver(self, name: .reloadAllWebViews, object: nil)
+        }
+
+        /// Reloads the WebView, bypassing the disk cache, in response to a settings save.
+        /// Uses `requestedURL` (the originally configured URL) rather than `webView.url`
+        /// so that redirect chains (e.g. HA login) never cause a load of the wrong page.
+        @objc private func handleReloadRequest() {
+            guard let webView, !requestedURL.isEmpty,
+                  let url = URL(string: requestedURL) else { return }
+            var request = URLRequest(url: url)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            webView.load(request)
+        }
+
         @objc func handleTap() {
             parent.kioskManager.handleUserActivity()
         }
-        
+
         // Handle messages from JavaScript
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let body = message.body as? [String: Any],
                   let action = body["action"] as? String else { return }
-            
+
             switch message.name {
             case "openSettings":
                 handleOpenSettings(action: action, data: body)
-                
+
             default:
                 AppLogger.webView.warning("Unhandled JavaScript message: \(message.name)")
             }
         }
-        
+
         private func handleOpenSettings(action: String, data: [String: Any]) {
             switch action {
             case "open_settings":
                 openSettings()
-                
+
             default:
                 break
             }
         }
-        
+
         private func openSettings() {
             NotificationCenter.default.post(name: .openSettings, object: nil)
-        }
-        
-        private func formatUptime() -> String {
-            let uptime = ProcessInfo.processInfo.systemUptime
-            let hours = Int(uptime) / 3600
-            let minutes = (Int(uptime) % 3600) / 60
-            return "\(hours)h \(minutes)m"
         }
     }
 }

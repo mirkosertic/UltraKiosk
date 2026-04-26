@@ -6,11 +6,14 @@ class KioskManager: ObservableObject {
     @Published var inactivityTimer: Timer?
     
     private let settings = SettingsManager.shared
-    private let brightnessManager = BrightnessManager()
-    private var inactivityTimeout: TimeInterval = 60.0 // 30 seconds for demo
+    private let brightnessManager: BrightnessControlling
+    private var inactivityTimeout: TimeInterval = 60.0
     private var cancellables = Set<AnyCancellable>()
-    
-    init() {
+
+    /// Production init uses a real BrightnessManager.
+    /// Pass a mock that conforms to BrightnessControlling in unit tests.
+    init(brightnessManager: BrightnessControlling = BrightnessManager()) {
+        self.brightnessManager = brightnessManager
         inactivityTimeout = settings.screensaverTimeout
     }
     

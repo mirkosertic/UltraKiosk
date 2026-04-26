@@ -6,6 +6,7 @@ UltraKiosk is a lightweight iOS app that displays Home Assistant in full‑scree
 
 ## Features
 - Full‑screen kiosk-mode display of Home Assistant dashboards (works best with HACS "Kioskmode")
+- **Slideshow mode**: cycle through multiple dashboards with smooth cross-fade transitions at a configurable interval
 - Screensaver after inactivity
 - Wake the display via face detection using the device camera
 - Wake-word detection via [Picovoice Porcupine](https://picovoice.ai/platform/porcupine/)
@@ -35,11 +36,11 @@ Requirements:
 
 ## Quick Start
 1. Install and launch the app.
-2. Set the Kiosk URL and other options in Settings.
+2. Open Settings (triple-tap the top-right corner) and add one or more URLs under **Kiosk mode → Manage URLs**.
 3. The dashboard loads in full screen; a screensaver starts after inactivity.
 4. The display wakes via local face detection.
 
-Example Kiosk URL:
+Example URL:
 ```
 http://homeassistant.local:8123/anzeige-flur/0?kiosk=true
 ```
@@ -75,8 +76,14 @@ Configuration data is available by tapping three times in the top right corner o
 - Timeout
 - Porcupine Access Token (from [Picovoice Console](https://console.picovoice.ai/))
 
-### Kiosk mode
-- Kiosk URL (optional)
+### Kiosk mode / Slideshow
+- **Manage URLs**: add, remove, and reorder up to 5 dashboard URLs
+  - One URL: single-page mode (no timer)
+  - Two or more URLs: slideshow mode with automatic cross-fade transitions
+  - No URLs: built-in demo page is shown
+- **Transition interval**: time each slide is displayed before cross-fading to the next (5 s – 5 min, default 30 s)
+
+All configured WebViews remain loaded in the background — sessions stay alive and assets are not reloaded on every transition. Because all slides share a single cookie store and process pool, a single Home Assistant login is valid across all dashboards.
 
 ## Privacy & Permissions
 - **Camera**: Used for face detection to wake the display.

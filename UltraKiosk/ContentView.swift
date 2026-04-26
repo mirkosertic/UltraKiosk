@@ -1,6 +1,7 @@
 import AVFoundation
 import SwiftUI
 import Vision
+import WebKit
 
 struct ContentView: View {
     @StateObject private var kioskManager = KioskManager()
@@ -9,18 +10,30 @@ struct ContentView: View {
     @StateObject private var mqttManager = MQTTManager()
     @StateObject private var settings = SettingsManager.shared
     @StateObject private var brightnessManager = BrightnessManager()
+    @StateObject private var slideshowManager = SlideshowManager()
 
     @State private var showingSettings = false
 
     var body: some View {
         ZStack {
-            // Keep WebView alive and just control visibility
-            KioskWebView()
-                .environmentObject(kioskManager)
-                .environmentObject(settings)
-                .opacity(kioskManager.isScreensaverActive ? 0 : 1)
-                .animation(.easeInOut(duration: 0.5), value: kioskManager.isScreensaverActive)
-                .allowsHitTesting(!kioskManager.isScreensaverActive)
+            // All WebViews are always resident in memory; visibility is controlled via
+            // opacity so WKWebView instances stay alive and sessions are preserved.
+            let slots: [String?] = {
+                let urls = settings.effectiveURLs
+                return urls.isEmpty ? [nil] : urls.map { Optional($0) }
+            }()
+
+            ForEach(Array(slots.enumerated()), id: \.offset) { index, urlOrNil in
+                KioskWebView(url: urlOrNil)
+                    .environmentObject(kioskManager)
+                    .opacity(webViewOpacity(for: index))
+                    .animation(.easeInOut(duration: 0.5), value: slideshowManager.currentIndex)
+                    .animation(.easeInOut(duration: 0.5), value: kioskManager.isScreensaverActive)
+                    .allowsHitTesting(
+                        index == slideshowManager.currentIndex &&
+                        !kioskManager.isScreensaverActive
+                    )
+            }
 
             // Keep camera preview alive for face detection (invisible)
             if settings.enableVoiceActivation {
@@ -57,6 +70,8 @@ struct ContentView: View {
         .onAppear {
             setupApp()
             setupNotifications()
+            slideshowManager.configure(settings: settings, kioskManager: kioskManager)
+            slideshowManager.start()
         }
         .onDisappear {
             brightnessManager.restoreOriginalBrightness()
@@ -76,6 +91,13 @@ struct ContentView: View {
             SettingsView()
         }
         .statusBarHidden(true)
+    }
+
+    /// Returns 1.0 for the currently active slide, 0.0 for all others.
+    /// All WebViews remain in the hierarchy at opacity 0 to stay alive.
+    private func webViewOpacity(for index: Int) -> Double {
+        guard !kioskManager.isScreensaverActive else { return 0 }
+        return index == slideshowManager.currentIndex ? 1.0 : 0.0
     }
 
     private func setupApp() {
@@ -146,6 +168,33 @@ struct ContentView: View {
             mqttManager.connect()
         } else if !settings.enableMQTT && mqttManager.isConnected {
             mqttManager.disconnect()
+        }
+
+        // Clear the WKWebView HTTP and service-worker cache so stale assets are
+        // never shown after settings are saved. Cookies and local/session storage
+        // are intentionally preserved to keep login sessions (e.g. HA auth) alive.
+        // After the async clear completes, each KioskWebView reloads itself.
+        clearWebViewCachePreservingAuth()
+    }
+
+    /// Removes disk cache, memory cache, and service-worker registrations from the
+    /// shared WKWebsiteDataStore, then signals every KioskWebView to reload.
+    /// Auth state (cookies, localStorage, IndexedDB) is left untouched so that
+    /// an existing Home Assistant login remains valid after the reload.
+    private func clearWebViewCachePreservingAuth() {
+        let cacheTypes: Set<String> = [
+            WKWebsiteDataTypeDiskCache,
+            WKWebsiteDataTypeMemoryCache,
+            WKWebsiteDataTypeOfflineWebApplicationCache,
+            WKWebsiteDataTypeServiceWorkerRegistrations,
+        ]
+        WKWebsiteDataStore.default().removeData(
+            ofTypes: cacheTypes,
+            modifiedSince: .distantPast
+        ) {
+            // Completion is called on the main thread by WKWebsiteDataStore.
+            AppLogger.app.info("WKWebView cache cleared — triggering reload of all slides")
+            NotificationCenter.default.post(name: .reloadAllWebViews, object: nil)
         }
     }
 

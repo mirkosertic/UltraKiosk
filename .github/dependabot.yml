@@ -1,0 +1,31 @@
+version: 2
+updates:
+
+  # Swift Package Manager dependencies (CocoaMQTT, Porcupine, Starscream).
+  # Dependabot reads Package.swift in the repository root and opens PRs when
+  # newer versions are available.
+  #
+  # NOTE: Dependabot PRs update Package.swift only.
+  # The version bump must also be applied in Xcode:
+  #   File → Packages → "Update to Latest Package Versions"
+  #   or edit the version requirement in the Xcode package settings.
+  - package-ecosystem: "swift"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "swift"
+
+  # GitHub Actions dependencies (actions/checkout, actions/cache, etc.)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"

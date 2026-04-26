@@ -1,0 +1,50 @@
+{
+  "pins" : [
+    {
+      "identity" : "cocoamqtt",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/emqx/CocoaMQTT.git",
+      "state" : {
+        "revision" : "7ad043c42b91944958bc81f8694eba1fde55ff0d",
+        "version" : "2.2.3"
+      }
+    },
+    {
+      "identity" : "ios-voice-processor",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Picovoice/ios-voice-processor.git",
+      "state" : {
+        "revision" : "083c02aed9a890400d647fd357f8a505bf672f58",
+        "version" : "1.2.0"
+      }
+    },
+    {
+      "identity" : "mqttcocoaasyncsocket",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leeway1208/MqttCocoaAsyncSocket",
+      "state" : {
+        "revision" : "ce3e18607fd01079495f86ff6195d8a3ca469f73",
+        "version" : "1.0.8"
+      }
+    },
+    {
+      "identity" : "porcupine",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Picovoice/porcupine.git",
+      "state" : {
+        "revision" : "08829fb824adee8aec1eb96c235c59f6cabc144a",
+        "version" : "3.0.4"
+      }
+    },
+    {
+      "identity" : "starscream",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/daltoniam/Starscream.git",
+      "state" : {
+        "revision" : "c6bfd1af48efcc9a9ad203665db12375ba6b145a",
+        "version" : "4.0.8"
+      }
+    }
+  ],
+  "version" : 2
+}

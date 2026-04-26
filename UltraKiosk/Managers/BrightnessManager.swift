@@ -1,8 +1,17 @@
 import UIKit
 import Combine
 
+/// Abstraction over screen-brightness operations.
+/// Conform to this protocol in production (BrightnessManager) and in test mocks.
+protocol BrightnessControlling {
+    func saveAndSetBrightness()
+    func restoreOriginalBrightness()
+    func dimScreen()
+    func setNormalBrightness()
+}
+
 /// Manages screen brightness with restoration of original user settings
-class BrightnessManager: ObservableObject {
+class BrightnessManager: ObservableObject, BrightnessControlling {
     private var originalBrightness: CGFloat?
     private let settings = SettingsManager.shared
     

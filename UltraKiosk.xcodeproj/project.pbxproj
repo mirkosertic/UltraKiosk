@@ -13,8 +13,19 @@
 		80A591682E66D511004BBBE0 /* Starscream in Frameworks */ = {isa = PBXBuildFile; productRef = 80A591672E66D511004BBBE0 /* Starscream */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		AC83EF312F9E849E004F788B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 802DF9A72E6391500079EC75 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 802DF9AE2E6391500079EC75;
+			remoteInfo = UltraKiosk;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		802DF9AF2E6391500079EC75 /* UltraKiosk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UltraKiosk.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC83EF2D2F9E849E004F788B /* UltraKioskTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UltraKioskTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,6 +47,11 @@
 			path = UltraKiosk;
 			sourceTree = "<group>";
 		};
+		AC83EF2E2F9E849E004F788B /* UltraKioskTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = UltraKioskTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,6 +66,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AC83EF2A2F9E849E004F788B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -57,6 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				802DF9B12E6391500079EC75 /* UltraKiosk */,
+				AC83EF2E2F9E849E004F788B /* UltraKioskTests */,
 				802DF9B02E6391500079EC75 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -65,6 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				802DF9AF2E6391500079EC75 /* UltraKiosk.app */,
+				AC83EF2D2F9E849E004F788B /* UltraKioskTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -98,6 +123,29 @@
 			productReference = 802DF9AF2E6391500079EC75 /* UltraKiosk.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AC83EF2C2F9E849E004F788B /* UltraKioskTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AC83EF352F9E849E004F788B /* Build configuration list for PBXNativeTarget "UltraKioskTests" */;
+			buildPhases = (
+				AC83EF292F9E849E004F788B /* Sources */,
+				AC83EF2A2F9E849E004F788B /* Frameworks */,
+				AC83EF2B2F9E849E004F788B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AC83EF322F9E849E004F788B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AC83EF2E2F9E849E004F788B /* UltraKioskTests */,
+			);
+			name = UltraKioskTests;
+			packageProductDependencies = (
+			);
+			productName = UltraKioskTests;
+			productReference = AC83EF2D2F9E849E004F788B /* UltraKioskTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -105,11 +153,15 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					802DF9AE2E6391500079EC75 = {
 						CreatedOnToolsVersion = 16.4;
+					};
+					AC83EF2C2F9E849E004F788B = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 802DF9AE2E6391500079EC75;
 					};
 				};
 			};
@@ -133,12 +185,20 @@
 			projectRoot = "";
 			targets = (
 				802DF9AE2E6391500079EC75 /* UltraKiosk */,
+				AC83EF2C2F9E849E004F788B /* UltraKioskTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		802DF9AD2E6391500079EC75 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC83EF2B2F9E849E004F788B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -155,7 +215,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AC83EF292F9E849E004F788B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AC83EF322F9E849E004F788B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 802DF9AE2E6391500079EC75 /* UltraKiosk */;
+			targetProxy = AC83EF312F9E849E004F788B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		802DF9CE2E6391500079EC75 /* Debug */ = {
@@ -353,6 +428,50 @@
 			};
 			name = Release;
 		};
+		AC83EF332F9E849E004F788B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PUP5F535RV;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.mirkosertic.UltraKioskTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/UltraKiosk.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/UltraKiosk";
+			};
+			name = Debug;
+		};
+		AC83EF342F9E849E004F788B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PUP5F535RV;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.mirkosertic.UltraKioskTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/UltraKiosk.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/UltraKiosk";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -370,6 +489,15 @@
 			buildConfigurations = (
 				802DF9D12E6391500079EC75 /* Debug */,
 				802DF9D22E6391500079EC75 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AC83EF352F9E849E004F788B /* Build configuration list for PBXNativeTarget "UltraKioskTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC83EF332F9E849E004F788B /* Debug */,
+				AC83EF342F9E849E004F788B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

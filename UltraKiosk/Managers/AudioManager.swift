@@ -7,7 +7,7 @@ enum APIError: Error, LocalizedError {
     case invalidURL
     case httpError(Int)
     case invalidResponse
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidURL:
@@ -19,6 +19,12 @@ enum APIError: Error, LocalizedError {
         }
     }
 }
+
+extension APIError: Equatable {}
+
+/// Closure type used to perform a URL data load.
+/// Defaults to URLSession.shared; swap in a mock closure during unit tests.
+typealias URLDataLoader = (URLRequest) async throws -> (Data, URLResponse)
 
 class AudioManager: NSObject, ObservableObject {
     
@@ -127,7 +133,7 @@ class AudioManager: NSObject, ObservableObject {
             let audioSession = AVAudioSession.sharedInstance()
             try audioSession.setCategory(.playAndRecord,
                                          mode: .default,
-                                         options: [.defaultToSpeaker, .allowBluetooth])
+                                         options: [.defaultToSpeaker, .allowBluetoothA2DP])
             
             // Apply preferred format settings
             try audioSession.setPreferredSampleRate(Double(settings.voiceSampleRate))
@@ -208,19 +214,18 @@ class AudioManager: NSObject, ObservableObject {
         }
     }
     
-    private func convertFloatToInt16(floatChannelData: UnsafePointer<Float>,
-                                    frameLength: Int) -> [Int16] {
-        var int16Samples = [Int16](repeating: 0, count: frameLength)
-        
-        for i in 0..<frameLength {
+    func convertFloatToInt16(floatSamples: [Float]) -> [Int16] {
+        var int16Samples = [Int16](repeating: 0, count: floatSamples.count)
+
+        for i in 0..<floatSamples.count {
             // Clamp float value to [-1.0, 1.0] range
-            let clampedValue = max(-1.0, min(1.0, floatChannelData[i]))
-            
+            let clampedValue = max(-1.0, min(1.0, floatSamples[i]))
+
             // Convert to Int16 range
             let scaledValue = clampedValue * Float(Int16.max)
             int16Samples[i] = Int16(scaledValue)
         }
-        
+
         return int16Samples
     }
     
@@ -320,7 +325,11 @@ class AudioManager: NSObject, ObservableObject {
         }
     }
     
-    func sendHomeAssistantConversation(text: String, language: String) async throws -> String {
+    func sendHomeAssistantConversation(
+        text: String,
+        language: String,
+        urlLoader: URLDataLoader = { try await URLSession.shared.data(for: $0) }
+    ) async throws -> String {
         // Construct the URL
         guard let url = URL(string: "\(settings.homeAssistantBaseURL)/api/conversation/process") else {
             throw APIError.invalidURL
@@ -354,7 +363,7 @@ class AudioManager: NSObject, ObservableObject {
         }
         
         // Perform the request
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await urlLoader(request)
         
         // Log the response
         AppLogger.homeAssistant.debug("=== HomeAssistant API Response ===")
@@ -373,7 +382,7 @@ class AudioManager: NSObject, ObservableObject {
         }
         
         // Parse the JSON response
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+        guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let responseData = json["response"] as? [String: Any],
               let speech = responseData["speech"] as? [String: Any],
               let plainText = speech["plain"] as? [String: Any],
@@ -400,10 +409,8 @@ class AudioManager: NSObject, ObservableObject {
         let channelData = floatChannelData[0] // Use first channel (mono)
                 
         // Convert float samples (-1.0 to 1.0) to Int16 (-32768 to 32767)
-        let int16Samples = convertFloatToInt16(
-            floatChannelData: channelData,
-            frameLength: frameLength
-        )
+        let samplesArray = Array(UnsafeBufferPointer(start: channelData, count: frameLength))
+        let int16Samples = convertFloatToInt16(floatSamples: samplesArray)
                 
         // Add samples to our buffer
         audioBuffer.append(contentsOf: int16Samples)

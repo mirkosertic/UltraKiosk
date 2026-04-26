@@ -4,26 +4,23 @@ import Combine
 
 class SettingsManager: ObservableObject {
     static let shared = SettingsManager()
-    
+
     // MARK: - User Defaults
-    // Use standard UserDefaults for this app
-    // Note: If you need to share settings with app extensions (widgets, etc.),
-    // configure an App Group in your project's Capabilities and use:
-    // UserDefaults(suiteName: "group.your.app.identifier")
-    private var userDefaults: UserDefaults {
-        return UserDefaults.standard
-    }
+    // The production singleton uses UserDefaults.standard.
+    // Pass a custom suite in init(userDefaults:) to get an isolated store for tests.
+    private let _userDefaults: UserDefaults
+    private var userDefaults: UserDefaults { _userDefaults }
     
     // MARK: - Published Settings
     @Published var homeAssistantIP: String = "homeassistant.local"
     @Published var homeAssistantPort: String = "8123"
-    @Published var accessToken: String = ""
+    @Published var accessToken: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIwYTJmOTU1ZDYwNjY0YmI1YTc2NGU4ZDAyNTMwZTA1ZSIsImlhdCI6MTcxOTE0MTcxNiwiZXhwIjoyMDM0NTAxNzE2fQ.u2rLYy7Mc4VIQ9-x_25Ra2IRejvkXBsRX8lxvjBzPIM"
     @Published var useHTTPS: Bool = false
     
     @Published var mqttBrokerIP: String = "homeassistant.local"
     @Published var mqttPort: String = "1883"
     @Published var mqttUsername: String = "homeassistant"
-    @Published var mqttPassword: String = ""
+    @Published var mqttPassword: String = "iepoiph4ongiesah2zoZae4AiLa8bie9oochaahaiQuoush3or3kiequoo3xohye"
     @Published var mqttUseTLS: Bool = false
     @Published var mqttTopicPrefix: String = "homeassistant"
     @Published var enableMQTT: Bool = true
@@ -36,11 +33,13 @@ class SettingsManager: ObservableObject {
     @Published var enableVoiceActivation: Bool = true
     @Published var kioskURL: String = "http://homeassistant.local:8123/anzeige-flur/0?kiosk"
     @Published var faceDetectionInterval: Double = 1.0 // seconds between detections
+    @Published var slideshowURLs: [String] = []
+    @Published var slideshowInterval: Double = 30.0
     
     // Voice pipeline settings
     @Published var voiceSampleRate: Int = 16000
     @Published var voiceTimeout: Int = 2
-    @Published var porcupineAccessToken: String = ""
+    @Published var porcupineAccessToken: String = "YTvBtr2dk1wvG5ZeOqT5Gg8Ui2gMGy/qaeTLst0dPBBpxuJK2vkDqg=="
     @Published var voiceLanguage: String = "de"
     @Published var homeAssistantConversationAgent: String = "conversation.claude_conversation"
     @Published var homeAssistantConversationId: String = "ipad"
@@ -71,9 +70,14 @@ class SettingsManager: ObservableObject {
         static let voiceLanguage = "voiceLanguage"
         static let homeAssistantConversationAgent = "homeAssistantConversationAgent"
         static let homeAssistantConversationId = "homeAssistantConversationId"
+        static let slideshowURLs     = "slideshowURLs"     // JSON-encoded [String]
+        static let slideshowInterval = "slideshowInterval"  // Double, seconds
     }
     
-    private init() {
+    /// Designated initializer. Use SettingsManager.shared in production code.
+    /// Pass a custom UserDefaults suite in unit tests to get an isolated, cleanable store.
+    init(userDefaults: UserDefaults = .standard) {
+        _userDefaults = userDefaults
         loadSettings()
     }
     
@@ -114,7 +118,7 @@ class SettingsManager: ObservableObject {
         
         homeAssistantIP = defaults.string(forKey: Keys.homeAssistantIP) ?? "homeassistant.local"
         homeAssistantPort = defaults.string(forKey: Keys.homeAssistantPort) ?? "8123"
-        accessToken = defaults.string(forKey: Keys.accessToken) ?? ""
+        accessToken = defaults.string(forKey: Keys.accessToken) ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIwYTJmOTU1ZDYwNjY0YmI1YTc2NGU4ZDAyNTMwZTA1ZSIsImlhdCI6MTcxOTE0MTcxNiwiZXhwIjoyMDM0NTAxNzE2fQ.u2rLYy7Mc4VIQ9-x_25Ra2IRejvkXBsRX8lxvjBzPIM"
         
         // Load boolean with proper default handling
         if defaults.object(forKey: Keys.useHTTPS) != nil {
@@ -127,7 +131,7 @@ class SettingsManager: ObservableObject {
         mqttBrokerIP = defaults.string(forKey: Keys.mqttBrokerIP) ?? "homeassistant.local"
         mqttPort = defaults.string(forKey: Keys.mqttPort) ?? "1883"
         mqttUsername = defaults.string(forKey: Keys.mqttUsername) ?? "homeassistant"
-        mqttPassword = defaults.string(forKey: Keys.mqttPassword) ?? ""
+        mqttPassword = defaults.string(forKey: Keys.mqttPassword) ?? "iepoiph4ongiesah2zoZae4AiLa8bie9oochaahaiQuoush3or3kiequoo3xohye"
         
         // Load boolean with proper default handling
         if defaults.object(forKey: Keys.mqttUseTLS) != nil {
@@ -199,7 +203,7 @@ class SettingsManager: ObservableObject {
         }
         
         porcupineAccessToken = defaults
-            .string(forKey: Keys.porcupineAccessToken) ?? ""
+            .string(forKey: Keys.porcupineAccessToken) ?? "YTvBtr2dk1wvG5ZeOqT5Gg8Ui2gMGy/qaeTLst0dPBBpxuJK2vkDqg=="
 
         voiceLanguage = defaults
             .string(forKey: Keys.voiceLanguage) ?? "de"
@@ -209,6 +213,27 @@ class SettingsManager: ObservableObject {
 
         homeAssistantConversationId = defaults
             .string(forKey: Keys.homeAssistantConversationId) ?? "ipad"
+
+        // Slideshow transition interval
+        if let interval = defaults.object(forKey: Keys.slideshowInterval) as? Double {
+            slideshowInterval = interval
+        } else {
+            slideshowInterval = 30.0
+        }
+
+        // Slideshow URL list — one-time migration from legacy kioskURL.
+        // Read directly from UserDefaults (not self.kioskURL) to avoid picking up
+        // the hardcoded fallback value on fresh installs.
+        if let data = defaults.data(forKey: Keys.slideshowURLs),
+           let decoded = try? JSONDecoder().decode([String].self, from: data) {
+            slideshowURLs = decoded
+        } else if let storedURL = defaults.string(forKey: Keys.kioskURL), !storedURL.isEmpty {
+            // Migrate an explicitly saved single URL to the new list format
+            slideshowURLs = [storedURL]
+        } else {
+            // Fresh install or empty kioskURL → demo mode
+            slideshowURLs = []
+        }
     }
     
     // MARK: - Public Save Method
@@ -245,7 +270,12 @@ class SettingsManager: ObservableObject {
         defaults.set(homeAssistantConversationAgent, forKey: Keys.homeAssistantConversationAgent)
         defaults.set(homeAssistantConversationId, forKey: Keys.homeAssistantConversationId)
         defaults.set(voiceLanguage, forKey: Keys.voiceLanguage)
-        
+
+        defaults.set(slideshowInterval, forKey: Keys.slideshowInterval)
+        if let data = try? JSONEncoder().encode(slideshowURLs) {
+            defaults.set(data, forKey: Keys.slideshowURLs)
+        }
+
         // Notify observers that settings have changed
         NotificationCenter.default.post(name: .settingsChanged, object: nil)
     }
@@ -319,7 +349,9 @@ class SettingsManager: ObservableObject {
             "voiceTimeout": voiceTimeout,
             "homeAssistantConversationAgent": homeAssistantConversationAgent,
             "homeAssistantConversationId": homeAssistantConversationId,
-            "voiceLanguage": voiceLanguage
+            "voiceLanguage": voiceLanguage,
+            "slideshowURLs": slideshowURLs,
+            "slideshowInterval": slideshowInterval
         ]
     }
     
@@ -350,6 +382,9 @@ class SettingsManager: ObservableObject {
 
         if let v = settings["voiceSampleRate"] as? Int { voiceSampleRate = v }
         if let v = settings["voiceTimeout"] as? Int { voiceTimeout = v }
+
+        if let urls = settings["slideshowURLs"] as? [String] { slideshowURLs = urls }
+        slideshowInterval = settings["slideshowInterval"] as? Double ?? slideshowInterval
     }
     
     // MARK: - Reset
@@ -382,5 +417,16 @@ class SettingsManager: ObservableObject {
         voiceLanguage = "de"
         homeAssistantConversationId = "ipad"
         homeAssistantConversationAgent = "conversation.claude_conversation"
+
+        slideshowURLs = []
+        slideshowInterval = 30.0
+    }
+
+    // MARK: - Computed Properties
+
+    /// Returns the non-empty URLs configured for the slideshow.
+    /// An empty array indicates demo mode.
+    var effectiveURLs: [String] {
+        slideshowURLs.filter { !$0.isEmpty }
     }
 }

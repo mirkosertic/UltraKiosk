@@ -309,7 +309,7 @@ class MQTTManager: ObservableObject {
         publish(topic: stateTopic, payload: String(batteryPercentage))
 
         // Battery attributes with more details
-        let batteryStateString = batteryStateToString(batteryState)
+        let batteryStateString = Self.batteryStateToString(batteryState)
         let attributes: [String: Any] = [
             "battery_state": batteryStateString,
             "is_charging": batteryState == .charging || batteryState == .full,
@@ -414,7 +414,7 @@ class MQTTManager: ObservableObject {
     }
 
     // MARK: - Helper Functions
-    private func batteryStateToString(_ state: UIDevice.BatteryState) -> String {
+    static func batteryStateToString(_ state: UIDevice.BatteryState) -> String {
         switch state {
         case .unknown:
             return "unknown"
@@ -659,15 +659,19 @@ extension MQTTManager {
         publishSelectState(key: "voiceSampleRate", value: String(settings.voiceSampleRate))
     }
 
+    /// Returns the canonical MQTT number payload string: integers without a decimal point,
+    /// fractional values with exactly three decimal places.
+    static func formatNumberPayload(_ value: Double) -> String {
+        if abs(value.rounded() - value) < 0.00001 {
+            return String(Int(value))
+        } else {
+            return String(format: "%.3f", value)
+        }
+    }
+
     private func publishNumberState(key: String, value: Double) {
         let topic = componentTopics(component: "number", key: key).state
-        let formatted: String
-        if abs(value.rounded() - value) < 0.00001 {
-            formatted = String(Int(value))
-        } else {
-            formatted = String(format: "%.3f", value)
-        }
-        publish(topic: topic, payload: formatted, retain: true)
+        publish(topic: topic, payload: MQTTManager.formatNumberPayload(value), retain: true)
     }
 
     private func publishSelectState(key: String, value: String) {
