@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/emqx/CocoaMQTT.git",
       "state" : {
-        "revision" : "7ad043c42b91944958bc81f8694eba1fde55ff0d",
-        "version" : "2.2.3"
+        "revision" : "69461a4291599711dd4bf386880f670623dca871",
+        "version" : "2.2.5"
       }
     },
     {
