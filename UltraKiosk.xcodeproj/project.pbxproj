@@ -525,8 +525,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/emqx/CocoaMQTT.git";
 			requirement = {
-				kind = upToNextMinorVersion;
-				minimumVersion = 2.1.7;
+				kind = exactVersion;
+				version = 2.1.7;
 			};
 		};
 		80A591662E66D511004BBBE0 /* XCRemoteSwiftPackageReference "Starscream" */ = {
